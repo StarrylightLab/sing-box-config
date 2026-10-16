@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "domain_suffix": [
+        "openai.com",
+        "chatgpt.com",
+        "oaistatic.com",
+        "oaiusercontent.com",
+        "anthropic.com",
+        "claude.ai",
+        "google.com",
+        "googleapis.com",
+        "gstatic.com",
+        "youtube.com",
+        "youtu.be",
+        "ytimg.com",
+        "googlevideo.com",
+        "telegram.org",
+        "t.me"
+      ]
+    }
+  ]
+}

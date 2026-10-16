@@ -1,0 +1,7 @@
+# Real generated configurations contain node credentials.
+/generated/*
+!/generated/README.md
+*.local.json
+.env
+.env.*
+.DS_Store

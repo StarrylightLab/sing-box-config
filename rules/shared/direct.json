@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "domain_suffix": [
+        "qq.com",
+        "weixin.qq.com",
+        "wechat.com",
+        "tenpay.com",
+        "qpic.cn",
+        "qlogo.cn"
+      ]
+    }
+  ]
+}

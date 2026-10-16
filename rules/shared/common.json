@@ -1,0 +1,55 @@
+{
+  "log": {
+    "level": "info",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "udp",
+        "tag": "dns-direct",
+        "server": "223.5.5.5"
+      },
+      {
+        "type": "https",
+        "tag": "dns-proxy",
+        "server": "1.1.1.1",
+        "path": "/dns-query",
+        "tls": {
+          "server_name": "cloudflare-dns.com"
+        },
+        "detour": "proxy"
+      }
+    ],
+    "rules": [],
+    "final": "dns-proxy",
+    "strategy": "prefer_ipv4",
+    "independent_cache": true
+  },
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "selector",
+      "tag": "proxy",
+      "outbounds": []
+    }
+  ],
+  "route": {
+    "auto_detect_interface": true,
+    "default_domain_resolver": {
+      "server": "dns-direct",
+      "strategy": "ipv4_only"
+    },
+    "rules": [],
+    "rule_set": [],
+    "final": "proxy"
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true
+    }
+  }
+}
