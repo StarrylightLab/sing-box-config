@@ -20,6 +20,20 @@
       "tag": "dns-in",
       "listen": "127.0.0.1",
       "listen_port": 1053
+    },
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "0.0.0.0",
+      "listen_port": 7897
     }
-  ]
+  ],
+  "remote_rule_links": {
+    "shared_common": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/shared/common.json",
+    "shared_sets": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/shared/sets.json",
+    "shared_direct": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/shared/direct.json",
+    "shared_proxy": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/shared/proxy.json",
+    "shared_block": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/shared/block.json",
+    "custom": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/custom.json"
+  }
 }

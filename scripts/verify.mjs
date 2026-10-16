@@ -25,9 +25,9 @@ async function render(profile, options = {}, override = {}) {
 }
 for (const profile of ['desktop','r5s-openwrt','iphone']) {
   const config = await render(profile);
-  if (profile === 'desktop') assert.equal(config.inbounds[0].listen,'127.0.0.1');
+  if (profile === 'desktop') assert.equal(config.inbounds.find(x=>x.type==='mixed').listen,'0.0.0.0');
   if (profile === 'r5s-openwrt') assert.equal(config.inbounds[0].auto_redirect,true);
-  if (profile === 'iphone') assert(!config.inbounds.some(x=>x.type==='mixed'));
+  if (profile === 'iphone') assert.equal(config.inbounds.find(x=>x.type==='mixed').listen_port,7897);
 }
 const linux = await render('desktop',{tun:'true',os:'linux',lanListen:'192.168.1.20'});
 assert.equal(linux.inbounds[1].auto_redirect,true);
@@ -40,5 +40,6 @@ assert(!config.dns.rules.some(x=>x.ip_cidr));
 await assert.rejects(()=>render('desktop',{}, {nodes:[]} ), /No converted nodes/);
 await assert.rejects(()=>render('desktop',{}, {nodes:[{type:'socks',tag:'direct'}]}), /reserved/);
 await assert.rejects(()=>render('desktop',{}, {'sb-custom':{direct:[{domain:['example.com'],outbound:'wrong'}],proxy:[],block:[]}}), /matcher/);
-await assert.rejects(()=>render('desktop',{lanListen:'0.0.0.0'}), /private LAN/);
+const openLan = await render('desktop',{lanListen:'0.0.0.0'});
+assert.equal(openLan.inbounds.find(x=>x.type==='mixed').listen,'0.0.0.0');
 console.log('PASS: three profiles, desktop TUN/LAN, custom precedence, DNS mapping, empty subscriptions, tag collision, policy-binding rejection.');

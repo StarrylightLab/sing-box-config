@@ -1,6 +1,6 @@
 # sing-box-config
 
-Sub-Store 管理订阅；本仓库维护一份共享规则、一份个人规则和三种设备模板。仓库：公开的 [StarrylightLab/sing-box-config](https://github.com/StarrylightLab/sing-box-config)。这里只发布通用模板与不含凭据的规则，机场订阅和最终节点配置保存在 Sub-Store。
+这是一个给 Sub-Store 使用的 sing-box 配置仓库。你只需要记住三类文件：三个设备模板、一个自定义规则文件、若干公开远程规则集。机场订阅和节点凭据仍然只放在 Sub-Store。
 
 ## 目录与维护入口
 
@@ -22,7 +22,7 @@ scripts/verify.mjs          # 离线合并与失败分支检查
  generated/README.md        # 最终配置不提交；由 Sub-Store 分别输出
 ```
 
-`templates/*.json` 是供本脚本读取的设备片段，不能直接导入 sing-box。脚本合并后才是完整配置。`optional_tun` 是本仓库的模板字段，不会写入最终配置。
+`templates/*.json` 是设备模板片段；每个模板都列出了远程规则链接，并把局域网代理固定为 `0.0.0.0:7897`。`remote_rule_links`、`optional_tun` 是给合并脚本看的字段，不会写入最终配置。
 
 采用 sing-box 1.12–1.14 已有字段（新 DNS server 格式、route action、address）。尚未使用目标设备二进制做 `sing-box check`；安装的内核版本应先确认。未来 1.15+ 应重新核对迁移说明，不能保证所有后续版本。`download_detour` 在此版本范围使用；升级到新 HTTP client 下载机制时集中修改共享定义。
 
@@ -50,68 +50,35 @@ scripts/verify.mjs          # 离线合并与失败分支检查
 
 无节点、重复/保留节点名、错误规则会停止输出，不静默回退直连。节点重命名/去重应在 Sub-Store 订阅处理中完成；本脚本不自行改节点名，以免破坏 detour 引用。
 
-## Sub-Store 接入
+## 最简单的使用方式
 
-使用官方文档中的「普通文件 + 文件脚本」，不使用 mihomo 专属覆写，也不调用未经文档说明的后台接口。
+只维护一个自定义规则文件：`rules/custom.json`。它已经包含 `block`、`direct`、`proxy` 三个栏目；把你自己的域名或 IP 填进去即可。三个模板都引用这个文件的公开 Raw 链接。
 
-本仓库公开，可以通过下表的 GitHub Raw 地址远程读取。Sub-Store 的订阅、组合订阅与最终输出不放到 GitHub。
+三个模板也都列出了共享规则链接（腾讯/微信直连、AI/Google/YouTube/Telegram 代理、国内规则集等）。Sub-Store 中只需要：
 
-`rules/custom.json` 默认全空。个人域名/IP 建议直接放在 Sub-Store 的 `sb-custom` 本地内容文件中，避免把个人规则公开。若希望把自定义规则也统一维护在 GitHub，请确认其可公开后再改此文件，并将 `sb-custom` 改为远程读取。
+1. 保存机场订阅并建立组合订阅。
+2. 读取一个设备模板：`desktop.json`、`r5s-openwrt.json` 或 `iphone.json`。
+3. 使用仓库的 `sub-store/scripts/merge.js` 合并节点和规则。
+4. 输出结果导入对应设备。
 
-1. 在 Sub-Store 保存机场订阅，再建立一个组合订阅。订阅地址与认证信息始终仅保存在 Sub-Store。
-2. 新建以下六个普通文件：前五个来源选「远程」，填下方完整 Raw 地址；`sb-custom` 来源选「本地内容」，复制空的 `rules/custom.json` 后在 Sub-Store 内填写个人规则。保持文件名一致：
-
-| Sub-Store 文件名 | 仓库文件 |
-| --- | --- |
-| `sb-common` | `rules/shared/common.json` |
-| `sb-shared-sets` | `rules/shared/sets.json` |
-| `sb-shared-direct` | `rules/shared/direct.json` |
-| `sb-shared-proxy` | `rules/shared/proxy.json` |
-| `sb-shared-block` | `rules/shared/block.json` |
-| `sb-custom` | `rules/custom.json` |
-
-这六个源文件不要挂合并脚本，避免递归调用。
-
-3. 再建立三个普通文件，来源选「远程」，分别填下方设备模板 Raw 地址，作为独立输出：
-
-| 输出文件名 | 远程模板 | 用途 |
-| --- | --- | --- |
-| `sb-desktop` | `templates/desktop.json` | macOS / Windows / Ubuntu |
-| `sb-r5s-openwrt` | `templates/r5s-openwrt.json` | OpenWrt R5S |
-| `sb-iphone` | `templates/iphone.json` | iPhone |
-
-4. 三个输出文件的「脚本操作」均使用下方 `merge.js` 远程脚本链接（或粘贴脚本内容），参数填写 `type=collection` 与 `name=实际组合订阅名称`。参数通过编辑页传入 `$arguments`；如使用一个订阅，`type=subscription`。名字包含特殊字符时按 Sub-Store 参数界面/文档做编码，不要填机场订阅 URL。
-5. 保存后使用 Sub-Store 界面生成的各自输出链接，分别导入客户端。不要公开分享这些链接；它们可能返回完整节点凭据。本仓库不会存储这些最终链接。
-
-### 完整远程链接
-
-公共文件的 URL 根路径：
+公开链接根地址：
 `https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/`
 
-| 用途 | 完整 URL |
-| --- | --- |
-| sb-common | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/shared/common.json |
-| sb-shared-sets | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/shared/sets.json |
-| sb-shared-direct | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/shared/direct.json |
-| sb-shared-proxy | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/shared/proxy.json |
-| sb-shared-block | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/shared/block.json |
-| 自定义规则初始内容 | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/custom.json |
-| sb-desktop 模板 | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/templates/desktop.json |
-| sb-r5s-openwrt 模板 | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/templates/r5s-openwrt.json |
-| sb-iphone 模板 | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/templates/iphone.json |
-| 共用脚本 | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/sub-store/scripts/merge.js |
+自定义规则：
+`https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/custom.json`
 
-远程更新受 GitHub/Sub-Store 缓存影响。需要可复现版本时，把所有 URL 中的 `main` 同时替换为同一个已验证提交 SHA。公开地址不需要 GitHub Token。不要把机场订阅地址或令牌填进本仓库或公开链接。
+合并脚本：
+`https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/sub-store/scripts/merge.js`
 
-源文件名可通过脚本参数 `common`、`sets`、`custom`、`shared_direct`、`shared_proxy`、`shared_block` 覆盖。建议第一版直接采用表中名称。
+模板里的局域网代理入口统一是 `0.0.0.0:7897`。局域网设备使用运行 sing-box 设备的实际局域网 IP 加 7897 端口访问；请只在可信 LAN 使用，并在系统防火墙中限制来源。
 
 ### Desktop
 
-默认仅开 `127.0.0.1:7897` 的 mixed 入口，使用系统代理或客户端手动指定。未默认启动 TUN。
+默认监听 `0.0.0.0:7897`，可供可信局域网设备使用。未默认启动 TUN。
 
 可选 `tun=true` 启动 TUN；Ubuntu 再加 `os=linux` 启用 `auto_redirect`。Windows/macOS 不传 `os=linux`。TUN 需要对应客户端/系统权限，端口 7897 须未被其他程序占用。
 
-macOS LAN 共享在同一模板加 `lanListen=Mac实际私有IPv4地址`（例如 `192.168.1.20`，请替换成你自己的地址）。只接受具体私有 IPv4，不接受 `0.0.0.0`。LAN 客户端手动使用该地址的 7897 端口；本模板不改变系统防火墙。该入口未设置账户密码，只应向可信 LAN 放行，不可转发到 WAN。未暴露 Clash API/Web 控制台。代理共享与远程控制是不同功能。
+三个模板都使用 `0.0.0.0:7897` 监听；请仅向可信 LAN 放行，不要转发到 WAN。
 
 ### R5S / OpenWrt
 

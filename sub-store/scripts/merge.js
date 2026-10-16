@@ -56,8 +56,8 @@ if (args.lanListen) {
   const mixed = config.inbounds.find(x => x.type === 'mixed');
   const parts = String(args.lanListen).split('.').map(Number);
   const privateIP = parts.length === 4 && parts.every(x => Number.isInteger(x) && x >= 0 && x <= 255) &&
-    (parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || (parts[0] === 192 && parts[1] === 168));
-  if (!mixed || !privateIP) throw new Error('lanListen requires desktop and a concrete private LAN IPv4 address');
+    (parts[0] === 0 || parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || (parts[0] === 192 && parts[1] === 168));
+  if (!mixed || !privateIP) throw new Error('lanListen requires a valid IPv4 address');
   mixed.listen = String(args.lanListen);
 }
 const routeRules = [{action: 'sniff'}, {protocol: 'dns', action: 'hijack-dns'}];
