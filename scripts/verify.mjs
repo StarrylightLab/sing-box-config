@@ -37,7 +37,7 @@ for(const p of ['desktop','r5s-openwrt','iphone']) {
   assert(set.url.startsWith('https://gh-proxy.com/https://raw.githubusercontent.com/'));
   assert.equal(set.download_detour,'direct');
  }
- assert.equal(mixed.listen,'::');assert.equal(mixed.listen_port,7897);
+ assert.equal(mixed.listen,'0.0.0.0');assert.equal(mixed.listen_port,7897);
  if(p==='desktop') assert(!c.inbounds.some(x=>x.type==='tun'));
  if(p==='r5s-openwrt') {
   assert.equal(c.inbounds.find(x=>x.type==='tun').auto_redirect,true);
