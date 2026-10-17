@@ -19,16 +19,16 @@ custom.example.json 只是格式示例，不会加载；scripts/verify.mjs 只�
 
 | 文件名称 | 远程链接 |
 |---|---|
-| sb-custom | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/custom.json |
-| sb-sets | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/sets.json |
-| sb-policies | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/shared/policies.json |
-| sb-desktop | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/templates/desktop.json |
-| sb-r5s | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/templates/r5s-openwrt.json |
-| sb-iphone | https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/templates/iphone.json |
+| sb-custom | https://gh-proxy.com/https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/custom.json |
+| sb-sets | https://gh-proxy.com/https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/sets.json |
+| sb-policies | https://gh-proxy.com/https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/shared/policies.json |
+| sb-desktop | https://gh-proxy.com/https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/templates/desktop.json |
+| sb-r5s | https://gh-proxy.com/https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/templates/r5s-openwrt.json |
+| sb-iphone | https://gh-proxy.com/https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/templates/iphone.json |
 
 3. 前三个文件不添加脚本。三个模板文件都添加「脚本操作」，选择远程脚本，填写同一个链接：
 
-    https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/sub-store/scripts/merge.js#type=collection&name=singbox
+    https://gh-proxy.com/https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/sub-store/scripts/merge.js#type=collection&name=singbox
 
 name=singbox 对应自己的组合名称；中文、空格、& 等需要 URL 编码。使用单个订阅时，将 type=collection 改为 type=subscription，name 填该订阅名称。参数放在脚本链接的 # 后面，不需要额外 JSON。
 
@@ -83,7 +83,7 @@ Sub-Store 是六个远程文件，其中三个生成最终配置。合并后的�
       "type": "remote",
       "tag": "geosite-example",
       "format": "binary",
-      "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/google.srs",
+      "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/google.srs",
       "download_detour": "direct",
       "update_interval": "1d"
     }
@@ -99,7 +99,7 @@ Sub-Store 是六个远程文件，其中三个生成最终配置。合并后的�
 - R5S 按 OpenWrt 设计，使用 auto_redirect，默认接口 br-lan；接口不同时修改模板。DNS 入口为 127.0.0.1:1053，需要按实际网络设置 dnsmasq 转发。防火墙、IPv6 和其他代理插件冲突仍需在设备上检查；导入模板不代表已经接管全网流量。
 - iPhone 的局域网访问还受系统权限和客户端运行状态影响。
 - 模板采用 sing-box 1.12 风格的 typed DNS、路由动作及 TUN 字段；按客户端内核版本检查兼容性。
-- 首次下载需要 GitHub Raw 可达，规则集默认直连下载。修改规则或共用策略文件后，在 Sub-Store 刷新远程文件/缓存，重新生成三个文件并更新设备配置；远程 .srs 由 sing-box 按 update_interval 更新。
+- 远程规则集、Sub-Store 六个远程文件和合并脚本链接均使用与参考模板相同的 gh-proxy.com 前缀；规则集仍通过 direct 下载。加速仅用于公开 GitHub 文件，不要给机场订阅、令牌或 Sub-Store 最终分享链接添加此前缀。若加速服务不可用，可移除 https://gh-proxy.com/ 前缀恢复 GitHub 原始链接；不提供自动回退。修改规则或共用策略文件后，在 Sub-Store 刷新远程文件/缓存，重新生成三个文件并更新设备配置；远程 .srs 由 sing-box 按 update_interval 更新。
 
 ## 参考与检查
 

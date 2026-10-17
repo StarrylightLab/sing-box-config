@@ -33,6 +33,10 @@ async function render(profile,args={},overrides={}) {
 }
 for(const p of ['desktop','r5s-openwrt','iphone']) {
  const c=await render(p),mixed=c.inbounds.find(x=>x.type==='mixed');
+ for(const set of c.route.rule_set) {
+  assert(set.url.startsWith('https://gh-proxy.com/https://raw.githubusercontent.com/'));
+  assert.equal(set.download_detour,'direct');
+ }
  assert.equal(mixed.listen,'::');assert.equal(mixed.listen_port,7897);
  if(p==='desktop') assert(!c.inbounds.some(x=>x.type==='tun'));
  if(p==='r5s-openwrt') {
