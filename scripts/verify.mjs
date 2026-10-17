@@ -10,16 +10,17 @@ async function render(profile,args={},overrides={}) {
  const ctx=vm.createContext({$arguments:{name:'test',...args},$content:JSON.stringify(await json('templates/'+profile+'.json')),produceArtifact:async a=>{
   calls.push(a);
   if(a.type==='file') {
-   const paths={'sb-custom':'rules/custom.json','sb-sets':'rules/sets.json','sb-policies':'shared/policies.json'};
-   assert(paths[a.name]);
-   return JSON.stringify(Object.hasOwn(overrides,a.name)?overrides[a.name]:await json(paths[a.name]));
+   assert.equal(a.name,args.common||'sb-common');
+   const common=await json('shared/common.json');
+   for(const key of ['custom','sets','policies']) if(Object.hasOwn(overrides,'sb-'+key)) common[key]=overrides['sb-'+key];
+   return JSON.stringify(Object.hasOwn(overrides,'common')?overrides.common:common);
   }
   assert.equal(a.platform,'sing-box'); assert.equal(a.produceType,'internal');
   assert.equal(a.type,args.type||'collection');
   return Object.hasOwn(overrides,'nodes')?overrides.nodes:[node];
  }});
  await new vm.Script('(async()=>{'+script+'})()').runInContext(ctx);
- assert.deepEqual(calls.filter(x=>x.type==='file').map(x=>x.name),['sb-custom','sb-sets','sb-policies']);
+ assert.deepEqual(calls.filter(x=>x.type==='file').map(x=>x.name),[args.common||'sb-common']);
  assert(!/optional_tun|remote_rule_links|\{all\}/.test(ctx.$content));
  const c=JSON.parse(ctx.$content),tags=new Set(c.outbounds.map(x=>x.tag)),sets=new Set(c.route.rule_set.map(x=>x.tag));
  assert.equal(tags.size,c.outbounds.length);
@@ -55,6 +56,8 @@ for(const os of ['linux','macos','windows']) {
  assert.equal(c.inbounds.find(x=>x.type==='tun').auto_redirect,os==='linux'?true:undefined);
 }
 await render('desktop',{type:'subscription'});
+await render('desktop',{common:'my-common'});
+for(const common of [null,[],{}, {custom:{},sets:{},policies:{}}, {custom:{},sets:{},policies:{},unexpected:true}]) await assert.rejects(()=>render('desktop',{}, {common}));
 const example=await json('rules/custom.example.json');
 const c=await render('desktop',{}, {'sb-custom':example});
 const resolve=c.route.rules.findIndex(x=>x.action==='resolve'),remote=c.route.rules.findIndex(x=>x.rule_set);
@@ -67,7 +70,7 @@ for(const kind of ['block','proxy','direct']) {
   if(key!=='ip_cidr') assert(c.dns.rules.some(x=>JSON.stringify(x[key])===JSON.stringify(match[key])&&(kind==='block'?x.action==='reject':x.server==='dns-'+kind)));
  }
 }
-assert.deepEqual(await json('rules/custom.json'),{direct:[{domain:['starrylight.myds.me']}],proxy:[],block:[]});
+assert.deepEqual((await json('shared/common.json')).custom,{direct:[{domain:['starrylight.myds.me']}],proxy:[],block:[]});
 await assert.rejects(()=>render('desktop',{}, {nodes:[]}),/没有可用节点/);
 await assert.rejects(()=>render('desktop',{}, {nodes:[{type:'socks',tag:'direct'}]}),/冲突/);
 await assert.rejects(()=>render('desktop',{}, {nodes:[node,node]}),/重复/);
@@ -83,7 +86,7 @@ for(const tag of ['香港优选','台湾优选','新加坡优选','日本优选'
 assert.deepEqual(grouped.outbounds.find(x=>x.tag==='香港优选').outbounds,['香港 HK 01','香港 HK 02']);
 assert(grouped.outbounds.find(x=>x.tag==='其他地区优选').outbounds.includes('德国 DE 01'));
 assert(!grouped.outbounds.find(x=>x.tag==='其他地区优选').outbounds.includes('香港 HK 01'));
-for(const [set,group] of Object.entries((await json('shared/policies.json')).rule_bindings)) assert.equal(grouped.route.rules.find(x=>x.rule_set?.includes(set)).outbound,group);
+for(const [set,group] of Object.entries((await json('shared/common.json')).policies.rule_bindings)) assert.equal(grouped.route.rules.find(x=>x.rule_set?.includes(set)).outbound,group);
 const nasRoute=grouped.route.rules.findIndex(x=>x.domain?.includes('starrylight.myds.me'));
 assert.equal(grouped.route.rules[nasRoute].outbound,'direct');
 assert(nasRoute<grouped.route.rules.findIndex(x=>x.rule_set));

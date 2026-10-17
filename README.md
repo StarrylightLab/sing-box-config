@@ -1,32 +1,28 @@
 # sing-box + Sub-Store
 
-日常维护两个规则文件，策略组集中维护在 shared/policies.json，三种设备共用一个合并脚本。订阅与节点凭据只保存在自己的 Sub-Store 中。
+日常只维护一个公共文件 shared/common.json，里面分 custom（个人规则）、sets（远程规则集链接）、policies（公共策略组）三个区域。三种设备共用一个合并脚本。订阅与节点凭据只保存在自己的 Sub-Store 中。
 
-    rules/custom.json              自己添加：直连、代理、拒绝
-    rules/sets.json                别人仓库的远程规则集链接
-    shared/policies.json            三端共用策略组、地区筛选和服务绑定
+    shared/common.json             个人规则 + 远程规则集链接 + 公共策略组
     templates/desktop.json         macOS / Windows / Ubuntu
     templates/r5s-openwrt.json      R5S OpenWrt
     templates/iphone.json           iPhone
     sub-store/scripts/merge.js      共用合并脚本
 
-custom.example.json 只是格式示例，不会加载；scripts/verify.mjs 只是检查工具。旧的 rules/shared 已移除。
+rules/custom.example.json 只是个人规则的格式示例，不会加载；scripts/verify.mjs 只是检查工具。原来的三个公共文件已合并移除。
 
 ## 在 Sub-Store 上设置
 
 1. 在「订阅」保存机场订阅，在「组合订阅」建立名为 **singbox** 的组合，加入需要的订阅。
-2. 在「文件」新增下表的六个远程文件，名称必须一致。
+2. 在「文件」新增下表的四个远程文件，名称必须一致。
 
 | 文件名称 | 远程链接 |
 |---|---|
-| sb-custom | https://gh-proxy.com/https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/custom.json |
-| sb-sets | https://gh-proxy.com/https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/sets.json |
-| sb-policies | https://gh-proxy.com/https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/shared/policies.json |
+| sb-common | https://gh-proxy.com/https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/shared/common.json |
 | sb-desktop | https://gh-proxy.com/https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/templates/desktop.json |
 | sb-r5s | https://gh-proxy.com/https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/templates/r5s-openwrt.json |
 | sb-iphone | https://gh-proxy.com/https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/templates/iphone.json |
 
-3. 前三个文件不添加脚本。三个模板文件都添加「脚本操作」，选择远程脚本，填写同一个链接：
+3. sb-common 不添加脚本。三个模板文件都添加「脚本操作」，选择远程脚本，填写同一个链接：
 
     https://gh-proxy.com/https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/sub-store/scripts/merge.js#type=collection&name=singbox
 
@@ -41,11 +37,20 @@ R5S 和 iPhone 已开启 TUN，不需要额外参数。
 
 4. 保存并预览：应出现订阅节点，且没有 {all}、optional_tun 或 remote_rule_links。复制 **Sub-Store 生成的文件分享/下载链接**，分别导入设备。GitHub 原始模板没有节点，不能直接作为最终配置使用。
 
-Sub-Store 是六个远程文件，其中三个生成最终配置。合并后的文件包含节点凭据，不要上传到公开仓库。
+Sub-Store 只需四个远程文件：一个公共配置，三个模板生成最终配置。合并后的文件包含节点凭据，不要上传到公开仓库。
+
+## 从原来的三个公共文件迁移
+
+1. 新建 sb-common，远程链接使用上表的 shared/common.json，不加脚本。
+2. 刷新三个模板使用的远程 merge.js 脚本缓存。脚本链接不变；如果手动加过 custom、sets、policies 参数，将它们删除。
+3. 依次预览 sb-desktop、sb-r5s、sb-iphone，确认能生成节点和规则。
+4. 确认成功后，删除 Sub-Store 旧文件 sb-custom、sb-sets、sb-policies。旧 GitHub 文件链接不再使用。
+
+公共文件分为三个区域：custom 平时添加自己的 direct / proxy / block 规则；sets 修改第三方规则集链接；policies 调整策略组、地区筛选与服务绑定。只增加自己的域名时，改 custom 即可。文件是标准 JSON，不支持注释或末尾多余逗号。
 
 ## 自定义规则
 
-只编辑 [rules/custom.json](rules/custom.json)。direct 表示直连、proxy 表示代理、block 表示拒绝。不写策略组名、outbound 或 action。
+编辑 [shared/common.json](shared/common.json) 顶层的 custom 区域。direct 表示直连、proxy 表示代理、block 表示拒绝。不写策略组名、outbound 或 action。下面仅演示 custom 区域的内容，不要覆盖整个公共文件。
 
     {
       "direct": [
@@ -77,7 +82,7 @@ Sub-Store 是六个远程文件，其中三个生成最终配置。合并后的�
 
 ## 规则集链接
 
-只编辑 [rules/sets.json](rules/sets.json)，同样分 direct、proxy、block，每项指向别人的规则集。例如把下面对象放进 proxy 数组：
+编辑 [shared/common.json](shared/common.json) 顶层的 sets 区域，同样分 direct、proxy、block，每项指向别人的规则集。例如把下面对象放进 sets.proxy 数组：
 
     {
       "type": "remote",
@@ -99,7 +104,7 @@ Sub-Store 是六个远程文件，其中三个生成最终配置。合并后的�
 - R5S 按 OpenWrt 设计，使用 auto_redirect，默认接口 br-lan；接口不同时修改模板。DNS 入口为 127.0.0.1:1053，需要按实际网络设置 dnsmasq 转发。防火墙、IPv6 和其他代理插件冲突仍需在设备上检查；导入模板不代表已经接管全网流量。
 - iPhone 的局域网访问还受系统权限和客户端运行状态影响。
 - 模板采用 sing-box 1.12 风格的 typed DNS、路由动作及 TUN 字段；按客户端内核版本检查兼容性。
-- 远程规则集、Sub-Store 六个远程文件和合并脚本链接均使用与参考模板相同的 gh-proxy.com 前缀；规则集仍通过 direct 下载。加速仅用于公开 GitHub 文件，不要给机场订阅、令牌或 Sub-Store 最终分享链接添加此前缀。若加速服务不可用，可移除 https://gh-proxy.com/ 前缀恢复 GitHub 原始链接；不提供自动回退。修改规则或共用策略文件后，在 Sub-Store 刷新远程文件/缓存，重新生成三个文件并更新设备配置；远程 .srs 由 sing-box 按 update_interval 更新。
+- 远程规则集、Sub-Store 四个远程文件和合并脚本链接均使用与参考模板相同的 gh-proxy.com 前缀；规则集仍通过 direct 下载。加速仅用于公开 GitHub 文件，不要给机场订阅、令牌或 Sub-Store 最终分享链接添加此前缀。若加速服务不可用，可移除 https://gh-proxy.com/ 前缀恢复 GitHub 原始链接；不提供自动回退。修改规则或共用策略文件后，在 Sub-Store 刷新远程文件/缓存，重新生成三个文件并更新设备配置；远程 .srs 由 sing-box 按 update_interval 更新。
 
 ## 参考与检查
 
@@ -115,7 +120,7 @@ Sub-Store 是六个远程文件，其中三个生成最终配置。合并后的�
 
 ## 共用策略与多节点
 
-只在 shared/policies.json 维护策略组和规则集对应关系，模板不再重复保存 outbounds。Sub-Store 新增 sb-policies 远程文件后，原来的脚本链接不变；也可用 policies 参数指定其他文件名。不要再叠加旧的节点插入脚本。
+在 shared/common.json 的 policies 区域维护策略组和规则集对应关系，模板不再重复保存 outbounds。默认读取 Sub-Store 文件 sb-common；也可用 common 参数指定其他公共文件名。不要再叠加旧的节点插入脚本。
 
 - 香港、台湾、新加坡、日本、美国、其他地区：每 10 分钟测速，容差 50ms。一个地区可加入多个节点，测速选一个出口；不是按连接轮询或等量分配。
 - 不同服务可同时使用不同地区：默认 ChatGPT/AI 选美国、YouTube/Microsoft 选香港、OneDrive 选台湾、Google 选日本、Telegram 选新加坡；Apple 默认直连。可在客户端修改服务策略组选择。缺少某地区节点时自动回退到全节点测速，避免空组。
@@ -127,6 +132,6 @@ Sub-Store 是六个远程文件，其中三个生成最终配置。合并后的�
 
 三个模板 DNS、域名解析和直连出口均优先 IPv6，兼容 IPv4；代理节点域名也允许 IPv6。DNS 服务器本身使用 IPv4 地址不妨碍查询 AAAA 记录。未使用 FakeIP。
 
-rules/custom.json 已加入精确域名 starrylight.myds.me 的直连规则，DNS 走 dns-direct，优先于第三方规则和服务策略。域名仍需发布有效 AAAA，设备网络、防火墙和群晖服务也必须具备 IPv6 可达性；配置检查不能证明公网访问成功。
+shared/common.json 的 custom.direct 已加入精确域名 starrylight.myds.me 的直连规则，DNS 走 dns-direct，优先于第三方规则和服务策略。域名仍需发布有效 AAAA，设备网络、防火墙和群晖服务也必须具备 IPv6 可达性；配置检查不能证明公网访问成功。
 
 混合代理监听固定为 0.0.0.0:7897，即监听所有本机 IPv4 接口。局域网客户端填写设备的实际 IPv4 地址和 7897 端口，不能填写 0.0.0.0。该入口不接收 IPv6 连接，但不影响 DNS 查询 AAAA、直连出口优先 IPv6 或访问 IPv6-only 群晖域名。监听入口与访问目标使用的 IP 版本是两回事。防火墙只应允许可信局域网访问。

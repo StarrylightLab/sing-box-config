@@ -6,9 +6,9 @@ if (!['subscription', 'collection'].includes(type)) throw new Error('type 只能
 const parse = value => typeof value === 'string' ? JSON.parse(value) : value;
 const config = parse($content ?? $files[0]);
 const readFile = async name => parse(await produceArtifact({type: 'file', name}));
-const custom = await readFile(args.custom || 'sb-custom');
-const sets = await readFile(args.sets || 'sb-sets');
-const policies = await readFile(args.policies || 'sb-policies');
+const common = await readFile(args.common || 'sb-common');
+if (!common || typeof common !== 'object' || Array.isArray(common) || Object.keys(common).some(key => !['custom', 'sets', 'policies'].includes(key))) throw new Error('common: 只能包含 custom/sets/policies');
+const {custom, sets, policies} = common;
 if (!policies || !Array.isArray(policies.outbounds) || !policies.node_filters || !policies.rule_bindings) throw new Error('policies: 缺少策略组、节点筛选或规则绑定');
 config.outbounds = policies.outbounds;
 const kinds = ['block', 'proxy', 'direct'];
