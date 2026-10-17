@@ -123,7 +123,7 @@ Sub-Store 只需四个远程文件：一个公共配置，三个模板生成最�
 
 ## DNS 设计与验证
 
-采用两条 DNS 路径，区分三种用途：国内/直连目标通过直连阿里 DoH（dns-direct）解析；代理目标通过代理出口访问 Cloudflare DoH（dns-proxy）；机场节点服务器域名由节点的 domain_resolver 指向 dns-direct，避免节点连接依赖代理 DNS。节点域名解析和应用发出的 DNS 请求不是同一个入口。三个平台共用此逻辑，平台差异保留在 TUN、DNS 接管和监听部分。
+采用两条 DNS 路径，区分三种用途：国内/直连目标通过直连阿里 DoH（dns-direct）解析；代理目标通过代理出口访问 Cloudflare DoH（dns-proxy）；机场节点服务器域名由节点的 domain_resolver 指向 dns-direct，并强制 IPv4 建连，避免节点自身 IPv6 路径影响 QUIC/UDP。目标网站仍保留 IPv6 优先，节点域名解析和应用发出的 DNS 请求不是同一个入口。三个平台共用此逻辑，平台差异保留在 TUN、DNS 接管和监听部分。
 
 当前 dns-direct 的 server 为 223.5.5.5，path 为 /dns-query，TLS server_name 为 dns.alidns.com。使用固定 IP 建立 DoH 连接，无须再增加一个只用于解析 dns.alidns.com 的 bootstrap 服务器。国内外 DNS 使用原有共用规则集分类；dns.final 保留 dns-proxy，与漏网之鱼默认代理一致。服务组 dns_bindings 是静态映射，不会因客户端切换策略组出口而自动同步。
 

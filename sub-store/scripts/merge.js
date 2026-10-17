@@ -66,7 +66,9 @@ for (const outbound of config.outbounds) {
 }
 config.outbounds = config.outbounds.filter(x => !emptyGroups.has(x.tag));
 for (const outbound of config.outbounds) if (outbound.outbounds) outbound.outbounds = [...new Set(outbound.outbounds.map(tag => emptyGroups.has(tag) ? 'auto' : tag))];
-for (const node of nodes) if (node.domain_resolver === undefined) node.domain_resolver = {server: 'dns-direct', strategy: 'prefer_ipv6'};
+// 机场节点服务器本身优先用 IPv4 建连，避免节点的 IPv6 路径影响 QUIC/UDP；
+// 目标网站仍按模板的 prefer_ipv6 解析，不影响 IPv6-only 直连规则。
+for (const node of nodes) if (node.domain_resolver === undefined) node.domain_resolver = {server: 'dns-direct', strategy: 'ipv4_only'};
 config.outbounds.push(...nodes);
 if (args.tun !== undefined && !['true', 'false', true, false].includes(args.tun)) throw new Error('tun 只能是 true/false');
 if (args.tun === true || args.tun === 'true') {

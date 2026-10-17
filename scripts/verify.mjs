@@ -27,6 +27,7 @@ async function render(profile,args={},overrides={}) {
  for(const x of c.outbounds) for(const tag of x.outbounds||[]) assert(tags.has(tag));
  assert(c.outbounds.find(x=>x.tag==='手动选择').outbounds.includes('TEST-NODE'));
  assert(c.outbounds.find(x=>x.tag==='proxy').outbounds.includes('auto'));
+ assert.equal(c.outbounds.find(x=>x.tag==='TEST-NODE').domain_resolver.strategy,'ipv4_only');
  for(const x of c.route.rules) if(x.outbound) assert(tags.has(x.outbound));
  for(const x of [...c.route.rules,...c.dns.rules]) for(const tag of x.rule_set||[]) assert(sets.has(tag));
  assert(!c.dns.rules.some(x=>x.ip_cidr));
