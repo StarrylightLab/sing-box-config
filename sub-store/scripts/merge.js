@@ -100,6 +100,17 @@ const hasCustomIPRules = customRules.some(rule => 'ip_cidr' in rule);
 if (hasCustomIPRules) routeRules.push({action: 'resolve', strategy: 'prefer_ipv6'});
 routeRules.push(...customRules);
 routeRules.push({ip_is_private: true, ...action('direct')});
+// 原生客户端通过 clash_mode 识别模式；DNS 劫持、个人规则和私网保护仍在前面。
+routeRules.push(
+  {clash_mode: 'Direct', action: 'route', outbound: 'direct'},
+  {clash_mode: 'Global', action: 'resolve', server: 'dns-proxy', strategy: 'prefer_ipv4'},
+  {clash_mode: 'Global', action: 'route', outbound: 'proxy'}
+);
+dnsRules.push(
+  {clash_mode: 'Direct', action: 'route', server: 'dns-direct'},
+  {clash_mode: 'Global', query_type: ['A', 'AAAA'], action: 'route', server: 'dns-fakeip'},
+  {clash_mode: 'Global', action: 'route', server: 'dns-proxy'}
+);
 const orderedSets = [
   ...sets.block.map(set => ['block', set]),
   ...sets.direct.filter(set => set.tag !== 'geosite-cn' && set.tag !== 'geoip-cn').map(set => ['direct', set]),

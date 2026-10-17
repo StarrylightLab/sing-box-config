@@ -37,6 +37,11 @@ for(const p of ['desktop','r5s-openwrt','iphone']) {
  assert(!Object.hasOwn((await json('templates/'+p+'.json')).dns,'independent_cache'));
  const c=await render(p),mixed=c.inbounds.find(x=>x.type==='mixed');
  assert(!Object.hasOwn(c.dns,'independent_cache'));
+ assert.equal(c.experimental.clash_api.default_mode,'Rule');
+ for (const mode of ['Direct','Global']) {
+  assert(c.route.rules.some(x=>x.clash_mode===mode&&x.outbound===(mode==='Direct'?'direct':'proxy')));
+  assert(c.dns.rules.some(x=>x.clash_mode===mode&&x.server===(mode==='Direct'?'dns-direct':'dns-fakeip')));
+ }
  const directDNS=c.dns.servers.find(server=>server.tag==='dns-direct');
  assert.equal(directDNS.type,'https');
  assert.equal(directDNS.server,'223.5.5.5');
@@ -46,7 +51,7 @@ for(const p of ['desktop','r5s-openwrt','iphone']) {
  const tencentRoute=c.route.rules.findIndex(rule=>rule.rule_set?.includes('geosite-tencent'));
  assert(tencentRoute>=0);
  assert.equal(c.route.rules[tencentRoute].outbound,'direct');
- assert(tencentRoute<c.route.rules.findIndex(rule=>rule.action==='resolve'));
+ assert(tencentRoute<c.route.rules.findIndex(rule=>rule.action==='resolve'&&!rule.clash_mode));
  assert.equal(c.dns.rules.find(rule=>rule.rule_set?.includes('geosite-tencent')).server,'dns-direct');
  assert(c.route.rules.some(rule=>rule.action==='resolve'&&rule.strategy==='ipv4_only'&&rule.rule_set?.includes('geosite-google')));
  assert(c.route.rules.findIndex(rule=>rule.action==='resolve')<c.route.rules.findIndex(rule=>rule.rule_set?.includes('geoip-cn')));
