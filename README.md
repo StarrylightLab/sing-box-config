@@ -30,8 +30,7 @@ name=singbox 对应自己的组合名称；中文、空格、& 等需要 URL 编
 
 桌面默认开启 HTTP/SOCKS 混合代理。需要 TUN 时在链接末尾添加：
 
-- macOS：&tun=true
-- Windows：&tun=true&os=windows（额外拒绝 UDP/443，让浏览器从 QUIC 回退到 TCP/TLS）
+- macOS / Windows：&tun=true
 - Ubuntu：&tun=true&os=linux
 
 R5S 和 iPhone 已开启 TUN，不需要额外参数。
@@ -101,6 +100,7 @@ Sub-Store 只需四个远程文件：一个公共配置，三个模板生成最�
 ## 设备说明
 
 - 三个模板的混合代理入口均为 **0.0.0.0:7897**。其他设备填写运行 sing-box 的设备局域网 IP 和 7897 端口，防火墙只允许可信局域网访问。
+- 桌面公共模板统一拒绝 UDP/443，让 QUIC 不可用时自动回退到 TCP/TLS；macOS、Windows、Ubuntu 使用同一份桌面配置，不需要按系统增加参数。
 - 桌面仅用混合端口时，在系统/应用设置代理；TUN 需要客户端支持和相应权限。
 - R5S 按 OpenWrt 设计，使用 auto_redirect，默认接口 br-lan；接口不同时修改模板。DNS 入口为 127.0.0.1:1053，需要按实际网络设置 dnsmasq 转发。防火墙、IPv6 和其他代理插件冲突仍需在设备上检查；导入模板不代表已经接管全网流量。
 - iPhone 的局域网访问还受系统权限和客户端运行状态影响。
