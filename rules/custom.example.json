@@ -2,37 +2,84 @@
   "direct": [
     {
       "domain": [
-        "router.example.com"
-      ],
+        "direct.example.com"
+      ]
+    },
+    {
       "domain_suffix": [
-        "lan.example"
-      ],
+        "direct.example.org"
+      ]
+    },
+    {
       "domain_keyword": [
-        "intranet"
-      ],
+        "direct-keyword"
+      ]
+    },
+    {
       "domain_regex": [
-        "^service\\.[a-z]+\\.example\\.net$"
-      ],
+        "^direct\\d+\\.example\\.net$"
+      ]
+    },
+    {
       "ip_cidr": [
-        "192.168.1.0/24",
-        "fd00:1234::/64"
+        "192.0.2.0/24",
+        "2001:db8::/32"
       ]
     }
   ],
   "proxy": [
     {
       "domain": [
-        "example-ai.com"
+        "proxy.example.com"
+      ]
+    },
+    {
+      "domain_suffix": [
+        "proxy.example.org"
+      ]
+    },
+    {
+      "domain_keyword": [
+        "proxy-keyword"
+      ]
+    },
+    {
+      "domain_regex": [
+        "^proxy\\d+\\.example\\.net$"
+      ]
+    },
+    {
+      "ip_cidr": [
+        "192.0.2.0/24",
+        "2001:db8::/32"
       ]
     }
   ],
   "block": [
     {
+      "domain": [
+        "block.example.com"
+      ]
+    },
+    {
       "domain_suffix": [
-        "ads.example"
-      ],
+        "block.example.org"
+      ]
+    },
+    {
       "domain_keyword": [
-        "tracking"
+        "block-keyword"
+      ]
+    },
+    {
+      "domain_regex": [
+        "^block\\d+\\.example\\.net$"
+      ]
+    },
+    {
+      "ip_cidr": [
+        "192.0.2.0/24",
+        "2001:db8::/32"
       ]
     }
   ]

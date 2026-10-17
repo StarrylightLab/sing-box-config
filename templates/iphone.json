@@ -1,4 +1,92 @@
 {
+  "log": {
+    "level": "info",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "udp",
+        "tag": "dns-direct",
+        "server": "223.5.5.5"
+      },
+      {
+        "type": "https",
+        "tag": "dns-proxy",
+        "server": "1.1.1.1",
+        "path": "/dns-query",
+        "tls": {
+          "server_name": "cloudflare-dns.com"
+        },
+        "detour": "proxy"
+      }
+    ],
+    "rules": [],
+    "final": "dns-proxy",
+    "strategy": "prefer_ipv4",
+    "independent_cache": true
+  },
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "selector",
+      "tag": "proxy",
+      "outbounds": [
+        "auto",
+        "{all}"
+      ]
+    },
+    {
+      "type": "urltest",
+      "tag": "auto",
+      "outbounds": [
+        "{all}"
+      ],
+      "interval": "10m",
+      "tolerance": 100
+    }
+  ],
+  "route": {
+    "auto_detect_interface": true,
+    "default_domain_resolver": {
+      "server": "dns-direct",
+      "strategy": "ipv4_only"
+    },
+    "rules": [
+      {
+        "action": "sniff",
+        "sniffer": [
+          "http",
+          "tls",
+          "quic",
+          "dns"
+        ]
+      },
+      {
+        "type": "logical",
+        "mode": "or",
+        "rules": [
+          {
+            "port": 53
+          },
+          {
+            "protocol": "dns"
+          }
+        ],
+        "action": "hijack-dns"
+      }
+    ],
+    "rule_set": [],
+    "final": "proxy"
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true
+    }
+  },
   "inbounds": [
     {
       "type": "tun",
@@ -18,11 +106,7 @@
     }
   ],
   "remote_rule_links": {
-    "shared_common": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/shared/common.json",
-    "shared_sets": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/shared/sets.json",
-    "shared_direct": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/shared/direct.json",
-    "shared_proxy": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/shared/proxy.json",
-    "shared_block": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/shared/block.json",
-    "custom": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/custom.json"
+    "custom": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/custom.json",
+    "sets": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/sets.json"
   }
 }

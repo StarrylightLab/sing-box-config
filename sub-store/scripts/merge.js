@@ -1,86 +1,76 @@
-// Sub-Store file script. Configure arguments in Sub-Store, never in Git.
-// Only documented globals: $arguments, $content, $files, produceArtifact.
+// Sub-Store 文件脚本。只使用官方文件脚本接口；凭据只保存在 Sub-Store。
 const args = $arguments || {};
-if (!args.name) throw new Error('Set name to a saved Sub-Store subscription/collection name.');
+if (!args.name) throw new Error('请设置 name 为 Sub-Store 中的订阅或组合订阅名称');
 const type = args.type || 'collection';
-if (!['subscription', 'collection'].includes(type)) throw new Error('type must be subscription or collection');
+if (!['subscription', 'collection'].includes(type)) throw new Error('type 只能是 subscription 或 collection');
 const parse = value => typeof value === 'string' ? JSON.parse(value) : value;
-const file = async name => parse(await produceArtifact({type: 'file', name}));
-const profile = parse($content || $files[0]);
-const common = await file(args.common || 'sb-common');
-const sets = await file(args.sets || 'sb-shared-sets');
-const custom = await file(args.custom || 'sb-custom');
-const shared = {};
-for (const kind of ['block', 'proxy', 'direct']) {
-  const source = await file(args['shared_' + kind] || 'sb-shared-' + kind);
-  shared[kind] = source.rules;
+const config = parse($content ?? $files[0]);
+const readFile = async name => parse(await produceArtifact({type: 'file', name}));
+const custom = await readFile(args.custom || 'sb-custom');
+const sets = await readFile(args.sets || 'sb-sets');
+const kinds = ['block', 'proxy', 'direct'];
+const matchKeys = new Set(['domain', 'domain_suffix', 'domain_keyword', 'domain_regex', 'ip_cidr']);
+function checkCategories(obj, label) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj) || Object.keys(obj).some(k => !kinds.includes(k))) throw new Error(label + ': 只能有 direct/proxy/block');
+  for (const kind of kinds) if (!Array.isArray(obj[kind])) throw new Error(label + ': 缺少 ' + kind + ' 数组');
 }
-// Match-only entries: policy bindings are added here, never stored in custom.json.
-const keys = new Set(['domain', 'domain_suffix', 'domain_keyword', 'domain_regex', 'ip_cidr']);
-function validateRules(group, label) {
-  if (!group || typeof group !== 'object' || Array.isArray(group)) throw new Error(label + ': expected direct/proxy/block object');
-  for (const key of Object.keys(group)) if (!['direct', 'proxy', 'block'].includes(key)) throw new Error(label + ': unexpected category ' + key);
-  for (const kind of ['block', 'proxy', 'direct']) {
-    if (!Array.isArray(group[kind])) throw new Error(label + ': missing array ' + kind);
-    for (const rule of group[kind]) {
-      if (!rule || typeof rule !== 'object' || Array.isArray(rule) || !Object.keys(rule).length) throw new Error(label + ': empty/invalid rule');
-      for (const [key, value] of Object.entries(rule)) {
-        if (!keys.has(key) || !Array.isArray(value) || !value.length || value.some(x => typeof x !== 'string' || !x.trim())) throw new Error(label + ': invalid matcher ' + key);
-        if (key === 'domain_regex') for (const pattern of value) new RegExp(pattern);
-      }
-    }
+checkCategories(custom, 'custom');
+checkCategories(sets, 'sets');
+for (const kind of kinds) for (const rule of custom[kind]) {
+  if (!rule || Array.isArray(rule) || typeof rule !== 'object' || !Object.keys(rule).length) throw new Error('custom: 不允许空规则');
+  for (const [key, value] of Object.entries(rule)) {
+    if (!matchKeys.has(key) || !Array.isArray(value) || !value.length || value.some(x => typeof x !== 'string' || !x.trim())) throw new Error('custom: 不支持的字段或值 ' + key);
+    if (key === 'domain_regex') for (const regex of value) new RegExp(regex);
   }
 }
-validateRules(custom, 'custom');
-validateRules(shared, 'shared');
-const proxies = await produceArtifact({type, name: args.name, platform: 'sing-box', produceType: 'internal'});
-if (!Array.isArray(proxies) || !proxies.length) throw new Error('No converted nodes; refusing to fall back to direct.');
-const tags = new Set(common.outbounds.map(x => x.tag));
-for (const node of proxies) {
-  if (!node || !node.type || typeof node.tag !== 'string' || !node.tag.trim() || tags.has(node.tag)) throw new Error('Empty, duplicate or reserved node tag. Rename/deduplicate in Sub-Store.');
-  if (['selector', 'urltest', 'direct', 'block', 'dns'].includes(node.type)) throw new Error('Expected converted proxy nodes only.');
-  tags.add(node.tag);
+const setTags = new Set();
+for (const kind of kinds) for (const set of sets[kind]) {
+  if (!set || typeof set !== 'object' || Array.isArray(set)) throw new Error('sets: 规则集必须是对象');
+  const allowed = ['tag', 'type', 'format', 'url', 'download_detour', 'update_interval'];
+  if (Object.keys(set).some(k => !allowed.includes(k)) || set.type !== 'remote' || !['binary', 'source'].includes(set.format) || typeof set.url !== 'string' || !/^https:\/\//.test(set.url) || typeof set.tag !== 'string' || !/^(geosite|geoip)-.+/.test(set.tag) || setTags.has(set.tag)) throw new Error('sets: 无效链接、类型或重复 tag');
+  setTags.add(set.tag);
 }
-common.outbounds.find(x => x.tag === 'proxy').outbounds = proxies.map(x => x.tag);
-common.outbounds.push(...proxies);
-const config = common;
-config.inbounds = profile.inbounds;
-if (args.tun !== undefined && !['true', 'false', true, false].includes(args.tun)) throw new Error('tun must be true or false');
-if (args.tun === 'true' || args.tun === true) {
-  if (!profile.optional_tun) throw new Error('tun argument is for desktop only');
-  const tun = profile.optional_tun;
-  if (args.os === 'linux') tun.auto_redirect = true;
-  config.inbounds.push(tun);
+const nodes = await produceArtifact({type, name: args.name, platform: 'sing-box', produceType: 'internal'});
+if (!Array.isArray(nodes) || !nodes.length) throw new Error('订阅没有可用节点，停止生成');
+const reserved = new Set(config.outbounds.map(x => x.tag));
+for (const node of nodes) {
+  if (!node || !node.type || typeof node.tag !== 'string' || !node.tag.trim() || reserved.has(node.tag) || ['selector', 'urltest', 'direct', 'block', 'dns'].includes(node.type)) throw new Error('节点名称为空、重复或与模板冲突；请先在 Sub-Store 去重/重命名');
+  reserved.add(node.tag);
 }
-if (args.lanListen) {
-  const mixed = config.inbounds.find(x => x.type === 'mixed');
-  const parts = String(args.lanListen).split('.').map(Number);
-  const privateIP = parts.length === 4 && parts.every(x => Number.isInteger(x) && x >= 0 && x <= 255) &&
-    (parts[0] === 0 || parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || (parts[0] === 192 && parts[1] === 168));
-  if (!mixed || !privateIP) throw new Error('lanListen requires a valid IPv4 address');
-  mixed.listen = String(args.lanListen);
+for (const outbound of config.outbounds) if (outbound.outbounds?.includes('{all}')) outbound.outbounds = outbound.outbounds.flatMap(tag => tag === '{all}' ? nodes.map(x => x.tag) : [tag]);
+config.outbounds.push(...nodes);
+if (args.tun !== undefined && !['true', 'false', true, false].includes(args.tun)) throw new Error('tun 只能是 true/false');
+if (args.tun === true || args.tun === 'true') {
+  if (!config.optional_tun) throw new Error('tun 参数只用于桌面模板');
+  if (args.os === 'linux') config.optional_tun.auto_redirect = true;
+  config.inbounds.push(config.optional_tun);
 }
-const routeRules = [{action: 'sniff'}, {protocol: 'dns', action: 'hijack-dns'}];
+delete config.optional_tun;
+delete config.remote_rule_links;
+const action = kind => kind === 'block' ? {action: 'reject'} : {action: 'route', outbound: kind};
+const routeRules = [...config.route.rules];
 if (config.inbounds.some(x => x.tag === 'dns-in')) routeRules.unshift({inbound: ['dns-in'], action: 'hijack-dns'});
 const dnsRules = [];
-function append(group) {
-  for (const kind of ['block', 'proxy', 'direct']) for (const match of group[kind]) {
-    routeRules.push({...match, ...(kind === 'block' ? {action: 'reject'} : {action: 'route', outbound: kind})});
-    // IP-CIDR rules act on connection destinations, not DNS questions.
-    // Do not broaden a mixed domain+IP matcher by dropping its IP condition.
-    if ('ip_cidr' in match) continue;
-    dnsRules.push({...match, ...(kind === 'block' ? {action: 'reject'} : {action: 'route', server: 'dns-' + kind})});
-  }
+const customRules = [];
+for (const kind of kinds) for (const match of custom[kind]) {
+  customRules.push({...match, ...action(kind)});
+  if (!('ip_cidr' in match)) dnsRules.push({...match, ...(kind === 'block' ? {action: 'reject'} : {action: 'route', server: 'dns-' + kind})});
 }
-routeRules.push({action: 'resolve'});
-append(custom);
-routeRules.push({ip_is_private: true, action: 'route', outbound: 'direct'});
-append(shared);
-routeRules.push({...sets.direct_domains, action: 'route', outbound: 'direct'});
-dnsRules.push({...sets.direct_domains, action: 'route', server: 'dns-direct'});
-routeRules.push({rule_set: ['geosite-cn'], action: 'route', outbound: 'direct'});
-routeRules.push({ip_is_private: true, action: 'route', outbound: 'direct'}, {rule_set: ['geoip-cn'], action: 'route', outbound: 'direct'});
+// 先解析再匹配个人规则，使个人 IP 规则也优先于第三方规则集。
+routeRules.push({action: 'resolve'}, ...customRules);
+routeRules.push({ip_is_private: true, ...action('direct')});
+const orderedSets = [
+  ...sets.block.map(set => ['block', set]),
+  ...sets.direct.filter(set => set.tag !== 'geosite-cn' && set.tag !== 'geoip-cn').map(set => ['direct', set]),
+  ...sets.proxy.map(set => ['proxy', set]),
+  ...sets.direct.filter(set => set.tag === 'geosite-cn' || set.tag === 'geoip-cn').map(set => ['direct', set])
+];
+for (const [kind, set] of orderedSets) if (set.tag.startsWith('geosite-')) {
+  routeRules.push({rule_set: [set.tag], ...action(kind)});
+  dnsRules.push({rule_set: [set.tag], ...(kind === 'block' ? {action: 'reject'} : {action: 'route', server: 'dns-' + kind})});
+}
+for (const [kind, set] of orderedSets) if (set.tag.startsWith('geoip-')) routeRules.push({rule_set: [set.tag], ...action(kind)});
 config.route.rules = routeRules;
-config.route.rule_set = sets.rule_sets;
-config.dns.rules = [...dnsRules, ...sets.dns];
+config.route.rule_set = kinds.flatMap(kind => sets[kind]);
+config.dns.rules = dnsRules;
 $content = JSON.stringify(config, null, 2);

@@ -1,45 +1,76 @@
 import fs from 'node:fs/promises';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
-const root = new URL('../', import.meta.url);
-const json = async path => JSON.parse(await fs.readFile(new URL(path, root), 'utf8'));
-const script = await fs.readFile(new URL('sub-store/scripts/merge.js', root), 'utf8');
-const paths = {'sb-common':'rules/shared/common.json', 'sb-shared-sets':'rules/shared/sets.json','sb-custom':'rules/custom.json',...Object.fromEntries(['direct','proxy','block'].map(x=>['sb-shared-'+x,'rules/shared/'+x+'.json']))};
-async function render(profile, options = {}, override = {}) {
-  const calls = [];
-  const context = vm.createContext({$arguments:{name:'test-collection',...options},$content:JSON.stringify(await json('templates/'+profile+'.json')),
-    produceArtifact: async arg => {
-      calls.push(arg);
-      if (arg.type === 'file') return JSON.stringify(override[arg.name] || await json(paths[arg.name]));
-      return override.nodes || [{type:'socks',tag:'TEST-NODE',server:'127.0.0.1',server_port:1080}];
-    }});
-  await new vm.Script('(async()=>{'+script+'})()').runInContext(context);
-  assert(calls.some(x=>x.platform==='sing-box' && x.produceType==='internal'));
-  const config = JSON.parse(context.$content);
-  const tags = new Set(config.outbounds.map(x=>x.tag));
-  assert.equal(tags.size,config.outbounds.length);
-  for (const rule of config.route.rules) if(rule.outbound) assert(tags.has(rule.outbound));
-  assert(!context.$content.includes('optional_tun'));
-  assert.equal(config.outbounds.find(x=>x.tag==='proxy').outbounds[0],'TEST-NODE');
-  return config;
+const root=new URL('../',import.meta.url);
+const json=async p=>JSON.parse(await fs.readFile(new URL(p,root),'utf8'));
+const script=await fs.readFile(new URL('sub-store/scripts/merge.js',root),'utf8');
+const node={type:'socks',tag:'TEST-NODE',server:'127.0.0.1',server_port:1080};
+async function render(profile,args={},overrides={}) {
+ const calls=[];
+ const ctx=vm.createContext({$arguments:{name:'test',...args},$content:JSON.stringify(await json('templates/'+profile+'.json')),produceArtifact:async a=>{
+  calls.push(a);
+  if(a.type==='file') {
+   const paths={'sb-custom':'rules/custom.json','sb-sets':'rules/sets.json'};
+   assert(paths[a.name]);
+   return JSON.stringify(Object.hasOwn(overrides,a.name)?overrides[a.name]:await json(paths[a.name]));
+  }
+  assert.equal(a.platform,'sing-box'); assert.equal(a.produceType,'internal');
+  assert.equal(a.type,args.type||'collection');
+  return Object.hasOwn(overrides,'nodes')?overrides.nodes:[node];
+ }});
+ await new vm.Script('(async()=>{'+script+'})()').runInContext(ctx);
+ assert.deepEqual(calls.filter(x=>x.type==='file').map(x=>x.name),['sb-custom','sb-sets']);
+ assert(!/optional_tun|remote_rule_links|\{all\}/.test(ctx.$content));
+ const c=JSON.parse(ctx.$content),tags=new Set(c.outbounds.map(x=>x.tag)),sets=new Set(c.route.rule_set.map(x=>x.tag));
+ assert.equal(tags.size,c.outbounds.length);
+ for(const x of c.outbounds) for(const tag of x.outbounds||[]) assert(tags.has(tag));
+ assert(c.outbounds.find(x=>x.tag==='proxy').outbounds.includes('TEST-NODE'));
+ assert(c.outbounds.find(x=>x.tag==='proxy').outbounds.includes('auto'));
+ for(const x of c.route.rules) if(x.outbound) assert(tags.has(x.outbound));
+ for(const x of [...c.route.rules,...c.dns.rules]) for(const tag of x.rule_set||[]) assert(sets.has(tag));
+ assert(!c.dns.rules.some(x=>x.ip_cidr));
+ return c;
 }
-for (const profile of ['desktop','r5s-openwrt','iphone']) {
-  const config = await render(profile);
-  if (profile === 'desktop') assert.equal(config.inbounds.find(x=>x.type==='mixed').listen,'0.0.0.0');
-  if (profile === 'r5s-openwrt') assert.equal(config.inbounds[0].auto_redirect,true);
-  if (profile === 'iphone') assert.equal(config.inbounds.find(x=>x.type==='mixed').listen_port,7897);
+for(const p of ['desktop','r5s-openwrt','iphone']) {
+ const c=await render(p),mixed=c.inbounds.find(x=>x.type==='mixed');
+ assert.equal(mixed.listen,'0.0.0.0');assert.equal(mixed.listen_port,7897);
+ if(p==='desktop') assert(!c.inbounds.some(x=>x.type==='tun'));
+ if(p==='r5s-openwrt') {
+  assert.equal(c.inbounds.find(x=>x.type==='tun').auto_redirect,true);
+  assert.deepEqual(c.inbounds.find(x=>x.type==='tun').include_interface,['br-lan']);
+  assert.equal(c.inbounds.find(x=>x.tag==='dns-in').listen_port,1053);
+  assert.equal(c.route.rules[0].action,'hijack-dns');
+ }
+ if(p==='iphone') assert(c.inbounds.some(x=>x.type==='tun'));
+ const t=c.route.rules.findIndex(x=>x.rule_set?.includes('geosite-tencent'));
+ const overseas=c.route.rules.findIndex(x=>x.rule_set?.includes('geosite-!cn'));
+ assert(t>=0&&t<overseas);
 }
-const linux = await render('desktop',{tun:'true',os:'linux',lanListen:'192.168.1.20'});
-assert.equal(linux.inbounds[1].auto_redirect,true);
-assert.equal(linux.inbounds[0].listen,'192.168.1.20');
-const custom = {direct:[{domain_suffix:['example.com']}],proxy:[{ip_cidr:['203.0.113.0/24']}],block:[{domain:['ads.example.com']}]};
-const config=await render('desktop',{}, {'sb-custom':custom});
-assert.equal(config.route.rules.find(x=>x.domain?.includes('ads.example.com')).action,'reject');
-assert(config.dns.rules.some(x=>x.domain_suffix?.includes('example.com') && x.server==='dns-direct'));
-assert(!config.dns.rules.some(x=>x.ip_cidr));
-await assert.rejects(()=>render('desktop',{}, {nodes:[]} ), /No converted nodes/);
-await assert.rejects(()=>render('desktop',{}, {nodes:[{type:'socks',tag:'direct'}]}), /reserved/);
-await assert.rejects(()=>render('desktop',{}, {'sb-custom':{direct:[{domain:['example.com'],outbound:'wrong'}],proxy:[],block:[]}}), /matcher/);
-const openLan = await render('desktop',{lanListen:'0.0.0.0'});
-assert.equal(openLan.inbounds.find(x=>x.type==='mixed').listen,'0.0.0.0');
-console.log('PASS: three profiles, desktop TUN/LAN, custom precedence, DNS mapping, empty subscriptions, tag collision, policy-binding rejection.');
+for(const os of ['linux','macos','windows']) {
+ const c=await render('desktop',{tun:'true',os});
+ assert.equal(c.inbounds.find(x=>x.type==='tun').auto_redirect,os==='linux'?true:undefined);
+}
+await render('desktop',{type:'subscription'});
+const example=await json('rules/custom.example.json');
+const c=await render('desktop',{}, {'sb-custom':example});
+const resolve=c.route.rules.findIndex(x=>x.action==='resolve'),remote=c.route.rules.findIndex(x=>x.rule_set);
+for(const kind of ['block','proxy','direct']) {
+ assert.equal(example[kind].length,5);
+ for(const match of example[kind]) {
+  const key=Object.keys(match)[0];
+  const i=c.route.rules.findIndex(x=>JSON.stringify(x[key])===JSON.stringify(match[key])&&(kind==='block'?x.action==='reject':x.outbound===kind));
+  assert(i>resolve&&i<remote);
+  if(key!=='ip_cidr') assert(c.dns.rules.some(x=>JSON.stringify(x[key])===JSON.stringify(match[key])&&(kind==='block'?x.action==='reject':x.server==='dns-'+kind)));
+ }
+}
+assert.deepEqual(await json('rules/custom.json'),{direct:[],proxy:[],block:[]});
+await assert.rejects(()=>render('desktop',{}, {nodes:[]}),/没有可用节点/);
+await assert.rejects(()=>render('desktop',{}, {nodes:[{type:'socks',tag:'direct'}]}),/冲突/);
+await assert.rejects(()=>render('desktop',{}, {nodes:[node,node]}),/重复/);
+await assert.rejects(()=>render('desktop',{name:''}),/请设置 name/);
+await assert.rejects(()=>render('desktop',{type:'bad'}),/type 只能/);
+await assert.rejects(()=>render('desktop',{tun:'yes'}),/tun 只能/);
+await assert.rejects(()=>render('iphone',{tun:'true'}),/只用于桌面/);
+for(const invalid of [{direct:[],proxy:[]},{direct:[{}],proxy:[],block:[]},{direct:[{domain:['example.com'],outbound:'bad'}],proxy:[],block:[]},{direct:[{port:[80]}],proxy:[],block:[]}]) await assert.rejects(()=>render('desktop',{}, {'sb-custom':invalid}));
+for(const set of [{type:'remote',tag:'geosite-bad',format:'yaml',url:'https://example.com/a'},{type:'remote',tag:'bad',format:'source',url:'https://example.com/a'}]) await assert.rejects(()=>render('desktop',{}, {'sb-sets':{direct:[set],proxy:[],block:[]}}));
+console.log('PASS: 3 profiles, 2 rule inputs, desktop TUN variants, 5 matchers in 3 categories, personal IP precedence, DNS mapping, subscription/collection, invalid inputs.');
