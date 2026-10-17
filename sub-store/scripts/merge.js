@@ -106,6 +106,8 @@ const orderedSets = [
   ...sets.direct.filter(set => set.tag === 'geosite-cn' || set.tag === 'geoip-cn').map(set => ['direct', set])
 ];
 for (const [kind, set] of orderedSets) if (set.tag.startsWith('geosite-')) {
+  // 代理域名在路由阶段重新解析为 IPv4，避免 Cloudflare 等站点选中不稳定的 IPv6 路径。
+  if (kind === 'proxy') routeRules.push({rule_set: [set.tag], action: 'resolve', strategy: 'ipv4_only'});
   routeRules.push({rule_set: [set.tag], ...action(kind, set)});
   dnsRules.push({rule_set: [set.tag], ...(kind === 'block' ? {action: 'reject'} : {action: 'route', server: policies.dns_bindings?.[policies.rule_bindings[set.tag]] || 'dns-' + kind})});
 }

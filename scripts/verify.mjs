@@ -48,7 +48,7 @@ for(const p of ['desktop','r5s-openwrt','iphone']) {
  assert.equal(c.route.rules[tencentRoute].outbound,'direct');
  assert(tencentRoute<c.route.rules.findIndex(rule=>rule.action==='resolve'));
  assert.equal(c.dns.rules.find(rule=>rule.rule_set?.includes('geosite-tencent')).server,'dns-direct');
- assert(c.route.rules.findIndex(rule=>rule.rule_set?.includes('geosite-google'))<c.route.rules.findIndex(rule=>rule.action==='resolve'));
+ assert(c.route.rules.some(rule=>rule.action==='resolve'&&rule.strategy==='ipv4_only'&&rule.rule_set?.includes('geosite-google')));
  assert(c.route.rules.findIndex(rule=>rule.action==='resolve')<c.route.rules.findIndex(rule=>rule.rule_set?.includes('geoip-cn')));
  for(const set of c.route.rule_set) {
   assert(set.url.startsWith('https://gh-proxy.com/https://raw.githubusercontent.com/'));
@@ -110,7 +110,7 @@ for(const tag of ['香港优选','台湾优选','新加坡优选','日本优选'
 assert.deepEqual(grouped.outbounds.find(x=>x.tag==='香港优选').outbounds,['香港 HK 01','香港 HK 02']);
 assert(grouped.outbounds.find(x=>x.tag==='其他地区优选').outbounds.includes('德国 DE 01'));
 assert(!grouped.outbounds.find(x=>x.tag==='其他地区优选').outbounds.includes('香港 HK 01'));
-for(const [set,group] of Object.entries((await json('shared/common.json')).policies.rule_bindings)) assert.equal(grouped.route.rules.find(x=>x.rule_set?.includes(set)).outbound,group);
+for(const [set,group] of Object.entries((await json('shared/common.json')).policies.rule_bindings)) assert.equal(grouped.route.rules.find(x=>x.rule_set?.includes(set)&&x.outbound).outbound,group);
 const nasRoute=grouped.route.rules.findIndex(x=>x.domain?.includes('starrylight.myds.me'));
 assert.equal(grouped.route.rules[nasRoute].outbound,'direct');
 assert(nasRoute<grouped.route.rules.findIndex(x=>x.rule_set));
