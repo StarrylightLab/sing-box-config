@@ -46,14 +46,6 @@
         "update_interval": "1d"
       },
       {
-        "tag": "geosite-github",
-        "type": "remote",
-        "format": "binary",
-        "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/github.srs",
-        "http_client": "rules-direct",
-        "update_interval": "1d"
-      },
-      {
         "tag": "geosite-onedrive",
         "type": "remote",
         "format": "binary",
@@ -86,38 +78,6 @@
         "update_interval": "1d"
       },
       {
-        "tag": "geosite-tiktok",
-        "type": "remote",
-        "format": "binary",
-        "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/tiktok.srs",
-        "http_client": "rules-direct",
-        "update_interval": "1d"
-      },
-      {
-        "tag": "geosite-netflix",
-        "type": "remote",
-        "format": "binary",
-        "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/netflix.srs",
-        "http_client": "rules-direct",
-        "update_interval": "1d"
-      },
-      {
-        "tag": "geosite-paypal",
-        "type": "remote",
-        "format": "binary",
-        "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/paypal.srs",
-        "http_client": "rules-direct",
-        "update_interval": "1d"
-      },
-      {
-        "tag": "geosite-steam",
-        "type": "remote",
-        "format": "binary",
-        "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/steam.srs",
-        "http_client": "rules-direct",
-        "update_interval": "1d"
-      },
-      {
         "tag": "geosite-!cn",
         "type": "remote",
         "format": "binary",
@@ -146,14 +106,6 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/telegram.srs",
-        "http_client": "rules-direct",
-        "update_interval": "1d"
-      },
-      {
-        "tag": "geoip-netflix",
-        "type": "remote",
-        "format": "binary",
-        "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/netflix.srs",
         "http_client": "rules-direct",
         "update_interval": "1d"
       }
@@ -417,86 +369,6 @@
       },
       {
         "type": "selector",
-        "tag": "GitHub",
-        "outbounds": [
-          "proxy",
-          "香港优选",
-          "台湾优选",
-          "新加坡优选",
-          "日本优选",
-          "美国优选",
-          "其他地区优选",
-          "auto",
-          "手动选择",
-          "direct"
-        ]
-      },
-      {
-        "type": "selector",
-        "tag": "TikTok",
-        "outbounds": [
-          "proxy",
-          "香港优选",
-          "台湾优选",
-          "新加坡优选",
-          "日本优选",
-          "美国优选",
-          "其他地区优选",
-          "auto",
-          "手动选择",
-          "direct"
-        ]
-      },
-      {
-        "type": "selector",
-        "tag": "Netflix",
-        "outbounds": [
-          "proxy",
-          "香港优选",
-          "台湾优选",
-          "新加坡优选",
-          "日本优选",
-          "美国优选",
-          "其他地区优选",
-          "auto",
-          "手动选择",
-          "direct"
-        ]
-      },
-      {
-        "type": "selector",
-        "tag": "PayPal",
-        "outbounds": [
-          "proxy",
-          "香港优选",
-          "台湾优选",
-          "新加坡优选",
-          "日本优选",
-          "美国优选",
-          "其他地区优选",
-          "auto",
-          "手动选择",
-          "direct"
-        ]
-      },
-      {
-        "type": "selector",
-        "tag": "Steam",
-        "outbounds": [
-          "proxy",
-          "香港优选",
-          "台湾优选",
-          "新加坡优选",
-          "日本优选",
-          "美国优选",
-          "其他地区优选",
-          "auto",
-          "手动选择",
-          "direct"
-        ]
-      },
-      {
-        "type": "selector",
         "tag": "漏网之鱼",
         "outbounds": [
           "proxy",
@@ -533,15 +405,9 @@
       "geosite-google": "Google",
       "geosite-youtube": "YouTube",
       "geosite-telegram": "Telegram",
-      "geosite-github": "GitHub",
-      "geosite-tiktok": "TikTok",
-      "geosite-netflix": "Netflix",
-      "geosite-paypal": "PayPal",
-      "geosite-steam": "Steam",
       "geoip-google": "Google",
       "geoip-apple": "Apple",
-      "geoip-telegram": "Telegram",
-      "geoip-netflix": "Netflix"
+      "geoip-telegram": "Telegram"
     },
     "dns_bindings": {
       "Apple": "dns-direct"
