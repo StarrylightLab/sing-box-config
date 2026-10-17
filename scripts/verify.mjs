@@ -37,6 +37,11 @@ for(const p of ['desktop','r5s-openwrt','iphone']) {
  assert(!Object.hasOwn((await json('templates/'+p+'.json')).dns,'independent_cache'));
  const c=await render(p),mixed=c.inbounds.find(x=>x.type==='mixed');
  assert(!Object.hasOwn(c.dns,'independent_cache'));
+ assert.equal(c.dns.final,'dns-proxy');
+ assert(!c.dns.optimistic);
+ for(const rule of c.dns.rules.filter(x=>x.server==='dns-fakeip')) assert.deepEqual(rule.query_type,['A','AAAA']);
+ for(const tag of ['geosite-onedrive','geosite-!cn']) assert(c.route.rules.some(x=>x.rule_set?.includes(tag)&&x.action==='resolve'&&x.server==='dns-proxy'&&x.strategy==='prefer_ipv4'));
+ assert(c.dns.rules.some(x=>x.action==='evaluate'&&x.server==='dns-proxy'));
  assert.equal(c.experimental.clash_api.default_mode,'Rule');
  for (const mode of ['Direct','Global']) {
   assert(c.route.rules.some(x=>x.clash_mode===mode&&x.outbound===(mode==='Direct'?'direct':'proxy')));
@@ -53,7 +58,7 @@ for(const p of ['desktop','r5s-openwrt','iphone']) {
  assert.equal(c.route.rules[tencentRoute].outbound,'direct');
  assert(tencentRoute<c.route.rules.findIndex(rule=>rule.action==='resolve'&&!rule.clash_mode));
  assert.equal(c.dns.rules.find(rule=>rule.rule_set?.includes('geosite-tencent')).server,'dns-direct');
- assert(c.route.rules.some(rule=>rule.action==='resolve'&&rule.strategy==='ipv4_only'&&rule.rule_set?.includes('geosite-google')));
+ assert(c.route.rules.some(rule=>rule.action==='resolve'&&rule.strategy==='prefer_ipv4'&&rule.server==='dns-proxy'&&rule.rule_set?.includes('geosite-google')));
  assert(c.route.rules.findIndex(rule=>rule.action==='resolve')<c.route.rules.findIndex(rule=>rule.rule_set?.includes('geoip-cn')));
  for(const set of c.route.rule_set) {
   assert(set.url.startsWith('https://gh-proxy.com/https://raw.githubusercontent.com/'));

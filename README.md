@@ -123,23 +123,21 @@ Sub-Store 只需四个远程文件：一个公共配置，三个模板生成最�
 
 ## DNS 设计与验证
 
-采用混合 DNS 路径，区分三种用途：国内、直连目标和群晖域名通过 dns-direct 解析并保留 IPv6 优先；代理规则集通过 dns-fakeip 返回 198.19.0.0/16 的虚拟 IPv4 地址，由 sing-box 根据反向映射继续按域名走代理；dns-proxy 保留为代理 DoH 服务器，供后续需要真实海外 DNS 查询时使用。机场节点服务器域名由节点的 domain_resolver 指向 dns-direct，并强制 IPv4 建连，避免节点自身 IPv6 路径影响 QUIC/UDP。三个平台共用此逻辑，平台差异保留在 TUN、DNS 接管和监听部分。
+三种模板共用混合 DNS 逻辑：
 
-当前 dns-direct 的 server 为 223.5.5.5，path 为 /dns-query，TLS server_name 为 dns.alidns.com。使用固定 IP 建立 DoH 连接，无须再增加一个只用于解析 dns.alidns.com 的 bootstrap 服务器。模板同时定义 dns-local、dns-proxy、dns-fakeip 和 dns-hosts；dns.final 使用 dns-direct，避免未命中规则的直连和 IPv6-only 域名被全局改成 IPv4。代理规则集在 DNS 阶段使用 dns-fakeip，直连规则集使用 dns-direct。服务组 dns_bindings 是静态映射，不会因客户端切换策略组出口而自动同步。
+- 自定义直连、国内域名和群晖使用 dns-direct（阿里 DoH），保留真实 A/AAAA 与 IPv6 优先。
+- 代理域名的 A/AAAA 查询使用 dns-fakeip。HTTPS/SVCB/TXT 等查询交给真实 DNS，不交给 FakeIP。
+- 代理目标在路由 resolve 阶段显式使用 dns-proxy（经 proxy 访问 Cloudflare DoH），优先 IPv4，保留只有 AAAA 时的解析能力。不能省略 server：内部解析会跳过 FakeIP；若兜底是国内 DNS，可能使代理连接使用错误的真实 IP。
+- 未收录域名的 A/AAAA 先用 dns-proxy evaluate；响应命中 geoip-cn 时转交 dns-direct，否则使用 FakeIP。内部真实解析及其他类型查询兜底使用 dns-proxy。因此无需给每个新海外网站增加个人规则。
+- 机场节点服务器域名仍使用 dns-direct + ipv4_only。节点服务器地址与网站目标地址是不同用途。
+- 保留 cache_capacity: 8192 和正常 TTL 缓存，关闭 optimistic，避免过期错误记录继续被复用。更新后必须停止并重新启动客户端，Windows 再清理系统 DNS 缓存（ipconfig /flushdns），退出并重开浏览器；无需删除全部策略组选择或缓存数据库。
+- 不全局屏蔽 AAAA、HTTPS/SVCB 或 QUIC。服务组 dns_bindings 是静态映射，Apple 默认绑定 dns-direct；客户端切换出口不会自动改变该绑定。
 
-DoH 是传输方式的选择，不能仅凭 UDP 改为 HTTPS 就认定速度或故障已改善。2026-10-17 通过独立 sing-box 1.14.2 回环 DNS 入口测试，同一上游 223.5.5.5、同一域名 channels.weixin.qq.com，关闭该测试实例的 DNS 缓存，各查询 A/AAAA/HTTPS 三轮（9 次）：UDP 全部 NOERROR，中位数 18ms，最大 25ms；DoH 全部 NOERROR，中位数 17ms，最大 75ms（首次连接）。这是当前网络下的少量样本，不能证明其他时段可靠性或所有 DNS 服务商的快慢。
+2026-10-17 用户日志显示 OneDrive 已选台湾代理、Dropbox 已选默认香港代理，但真实解析出现异常地址；Pixler 未被上游域名集收录，仍获取真实 IPv6。修复针对解析链路和未知域名兜底，不增加 Pixler 专用规则，不改服务策略组地区。
 
-已撤回临时新增的微信个人后缀规则；custom 只保留原来的 starrylight.myds.me，微信继续由已有 geosite-tencent 负责。使用撤回后的产物及下载得到的实际腾讯规则内容做独立测试，A/AAAA 解析成功，日志确认经 dns-direct 和 direct 出口，HTTPS 连接约 0.38 秒完成（HEAD 返回 405）。这证明显式补域名不是当前测试成功的必要条件；用户报告的瞬时错误尚未复现。测试不启用 TUN、不加载真实机场节点、不接管当前客户端。
+隔离验证使用 sing-box 1.14.2、实际下载的 OneDrive/海外域名规则集、本地模拟 DNS 和 SOCKS 出口：验证 FakeIP 还原后真实解析使用代理 DNS、IPv4 优先与 IPv6-only 目标、未知域名、国内响应分流以及群晖 AAAA。测试不启动 TUN、不加载真实订阅、不修改系统网络。模拟出口故意拒绝连接，用于记录真实目标地址；它不证明用户机场出口可用或网站已恢复。
 
-IPv6 保留 prefer_ipv6。直连规则和群晖域名返回真实 A/AAAA；代理规则集使用 FakeIP，避免应用拿到 Cloudflare 等不稳定 IPv6 地址后直接连接。没有全局过滤 AAAA、HTTPS 或 SVCB，也没有默认拒绝 QUIC。仅在个人 IP 规则要求优先匹配时提前解析；通常先按域名分流，到 IP 规则阶段才 resolve。
-
-保留正常 DNS 缓存与上游 TTL，不新增 rewrite_ttl、disable_expire 或 optimistic 长时间过期缓存。官方说明 optimistic 可以返回过期记录并后台刷新，默认窗口为 3d；当前存在动态群晖域名和动态 CDN，先保持现有正常缓存，以便诊断。reverse_mapping 保持现状用于辅助域名分流；官方提醒 macOS 系统缓存可能影响此映射，不能把它当作保证命中域名的机制，也不能据此断定它导致 DNS 查询失败。
-
-当前没有自动备用 DNS。只列出多个 servers 不会自动形成容错；若后续需要备用，应单独设计并测试 evaluate/响应匹配/超时的处理，而且需覆盖 domain_resolver 路径，而不只是应用 DNS 规则。暂不添加未经验证的回退或竞速配置。
-
-依据：[DNS 与缓存](https://sing-box.sagernet.org/configuration/dns/)、[DoH 服务器](https://sing-box.sagernet.org/configuration/dns/server/https/)、[拨号字段和 domain_resolver](https://sing-box.sagernet.org/configuration/shared/dial/)、[DNS 动作](https://sing-box.sagernet.org/configuration/dns/rule_action/)、[路由 resolve 动作](https://sing-box.sagernet.org/configuration/route/rule_action/#resolve)。当前网页文档与 v1.14.2 对应源代码均已核对。
-
-刷新 sb-common 并重新生成后，若微信仍失败，应读取故障发生时的日志，区分查询超时、SERVFAIL/NXDOMAIN、TLS 错误和代理端口连接超时。故障不复现时不能把配置检查或少量成功查询当作修复证明。浏览器单独指定的安全 DNS、macOS TUN 接管与局域网代理端口可达性仍需按实际运行环境定位。
+桌面与 iPhone 合并配置通过 1.14.2 内核检查；OpenWrt auto_redirect 仍需在 R5S 本机验证。依据：[DNS 动作](https://sing-box.sagernet.org/configuration/dns/rule_action/)、[路由 resolve](https://sing-box.sagernet.org/configuration/route/rule_action/#resolve)、[官方迁移指南](https://sing-box.sagernet.org/migration/)。
 
 ## 共用策略与多节点
 

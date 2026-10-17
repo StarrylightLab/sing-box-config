@@ -47,13 +47,10 @@
       }
     ],
     "rules": [],
-    "final": "dns-direct",
+    "final": "dns-proxy",
     "strategy": "prefer_ipv6",
     "reverse_mapping": true,
-    "cache_capacity": 8192,
-    "optimistic": {
-      "enabled": true
-    }
+    "cache_capacity": 8192
   },
   "route": {
     "default_http_client": "rules-direct",

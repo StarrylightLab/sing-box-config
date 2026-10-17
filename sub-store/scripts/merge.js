@@ -90,10 +90,19 @@ const action = (kind, set) => kind === 'block' ? {action: 'reject'} : {action: '
 const routeRules = [...config.route.rules];
 if (config.inbounds.some(x => x.tag === 'dns-in')) routeRules.unshift({inbound: ['dns-in'], action: 'hijack-dns'});
 const dnsRules = [...config.dns.rules];
+// FakeIP 只处理 A/AAAA；HTTPS/SVCB/TXT 等交给真实 DNS。
+const dnsRoute = (match, server, useFakeIP) => {
+  if (useFakeIP) dnsRules.push({...match, query_type: ['A', 'AAAA'], action: 'route', server: 'dns-fakeip'});
+  dnsRules.push({...match, action: 'route', server});
+};
 const customRules = [];
 for (const kind of kinds) for (const match of custom[kind]) {
+  if (kind === 'proxy' && !('ip_cidr' in match)) customRules.push({...match, action: 'resolve', server: 'dns-proxy', strategy: 'prefer_ipv4'});
   customRules.push({...match, ...action(kind)});
-  if (!('ip_cidr' in match)) dnsRules.push({...match, ...(kind === 'block' ? {action: 'reject'} : {action: 'route', server: kind === 'proxy' ? 'dns-fakeip' : 'dns-direct'})});
+  if (!('ip_cidr' in match)) {
+    if (kind === 'block') dnsRules.push({...match, action: 'reject'});
+    else dnsRoute(match, 'dns-' + kind, kind === 'proxy');
+  }
 }
 // 仅在个人 IP 规则需要时提前解析；普通域名先分流，避免代理目标也依赖本地 DNS。
 const hasCustomIPRules = customRules.some(rule => 'ip_cidr' in rule);
@@ -118,15 +127,23 @@ const orderedSets = [
   ...sets.direct.filter(set => set.tag === 'geosite-cn' || set.tag === 'geoip-cn').map(set => ['direct', set])
 ];
 for (const [kind, set] of orderedSets) if (set.tag.startsWith('geosite-')) {
-  // 代理域名在路由阶段重新解析为 IPv4，避免 Cloudflare 等站点选中不稳定的 IPv6 路径。
-  if (kind === 'proxy') routeRules.push({rule_set: [set.tag], action: 'resolve', strategy: 'ipv4_only'});
+  // 显式指定真实 DNS，避免内部查询跳过 FakeIP 后落入国内 DNS。
+  const realDNS = policies.dns_bindings?.[policies.rule_bindings[set.tag]] || 'dns-' + kind;
+  if (kind === 'proxy') routeRules.push({rule_set: [set.tag], action: 'resolve', server: realDNS, strategy: realDNS === 'dns-direct' ? 'prefer_ipv6' : 'prefer_ipv4'});
   routeRules.push({rule_set: [set.tag], ...action(kind, set)});
-  const dnsServer = kind === 'block' ? undefined : (kind === 'proxy' ? 'dns-fakeip' : (policies.dns_bindings?.[policies.rule_bindings[set.tag]] || 'dns-direct'));
-  dnsRules.push({rule_set: [set.tag], ...(kind === 'block' ? {action: 'reject'} : {action: 'route', server: dnsServer})});
+  if (kind === 'block') dnsRules.push({rule_set: [set.tag], action: 'reject'});
+  else dnsRoute({rule_set: [set.tag]}, realDNS, kind === 'proxy' && realDNS !== 'dns-direct');
 }
 // 未被域名规则匹配的目标，到 IP 规则阶段才解析；解析后再次保护私网地址。
-if (!hasCustomIPRules) routeRules.push({action: 'resolve', strategy: 'prefer_ipv6'}, {ip_is_private: true, ...action('direct')});
+if (!hasCustomIPRules) routeRules.push({action: 'resolve', server: 'dns-proxy', strategy: 'prefer_ipv4'}, {ip_is_private: true, ...action('direct')});
 for (const [kind, set] of orderedSets) if (set.tag.startsWith('geoip-')) routeRules.push({rule_set: [set.tag], ...action(kind, set)});
+// 未收录的域名也按响应判断国内/海外，无须为每个新网站补规则。
+// 使用真实代理 DNS 判断，国内响应再交给国内 DNS；其余地址查询使用 FakeIP。
+if (setTags.has('geoip-cn')) dnsRules.push(
+  {query_type: ['A', 'AAAA'], action: 'evaluate', server: 'dns-proxy'},
+  {match_response: true, rule_set: ['geoip-cn'], action: 'route', server: 'dns-direct'}
+);
+dnsRules.push({query_type: ['A', 'AAAA'], action: 'route', server: 'dns-fakeip'});
 config.route.rules = routeRules;
 config.route.rule_set = kinds.flatMap(kind => sets[kind]);
 config.dns.rules = dnsRules;
