@@ -72,8 +72,7 @@ for(const p of ['desktop','r5s-openwrt','iphone']) {
 for(const os of ['linux','macos','windows']) {
  const c=await render('desktop',{tun:'true',os});
  assert.equal(c.inbounds.find(x=>x.type==='tun').auto_redirect,os==='linux'?true:undefined);
- const quicReject=c.route.rules.findIndex(x=>x.network==='udp'&&x.port===443&&x.action==='reject');
- assert.equal(quicReject,0);
+ assert.equal(c.route.rules.some(x=>x.network==='udp'&&x.port===443&&x.action==='reject'),false);
 }
 await render('desktop',{type:'subscription'});
 await render('desktop',{common:'my-common'});

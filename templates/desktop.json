@@ -40,11 +40,6 @@
     },
     "rules": [
       {
-        "network": "udp",
-        "port": 443,
-        "action": "reject"
-      },
-      {
         "action": "sniff",
         "sniffer": [
           "http",
