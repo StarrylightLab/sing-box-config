@@ -7,13 +7,7 @@
         ]
       }
     ],
-    "proxy": [
-      {
-        "domain": [
-          "pixler.starrylight.art"
-        ]
-      }
-    ],
+    "proxy": [],
     "block": []
   },
   "sets": {

@@ -90,7 +90,7 @@ for(const kind of ['block','proxy','direct']) {
   if(key!=='ip_cidr') assert(c.dns.rules.some(x=>JSON.stringify(x[key])===JSON.stringify(match[key])&&(kind==='block'?x.action==='reject':x.server==='dns-'+kind)));
  }
 }
-assert.deepEqual((await json('shared/common.json')).custom,{direct:[{domain:['starrylight.myds.me']}],proxy:[{domain:['pixler.starrylight.art']}],block:[]});
+assert.deepEqual((await json('shared/common.json')).custom,{direct:[{domain:['starrylight.myds.me']}],proxy:[],block:[]});
 await assert.rejects(()=>render('desktop',{}, {nodes:[]}),/没有可用节点/);
 await assert.rejects(()=>render('desktop',{}, {nodes:[{type:'socks',tag:'direct'}]}),/冲突/);
 await assert.rejects(()=>render('desktop',{}, {nodes:[node,node]}),/重复/);
