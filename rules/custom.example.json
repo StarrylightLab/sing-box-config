@@ -1,0 +1,39 @@
+{
+  "direct": [
+    {
+      "domain": [
+        "router.example.com"
+      ],
+      "domain_suffix": [
+        "lan.example"
+      ],
+      "domain_keyword": [
+        "intranet"
+      ],
+      "domain_regex": [
+        "^service\\.[a-z]+\\.example\\.net$"
+      ],
+      "ip_cidr": [
+        "192.168.1.0/24",
+        "fd00:1234::/64"
+      ]
+    }
+  ],
+  "proxy": [
+    {
+      "domain": [
+        "example-ai.com"
+      ]
+    }
+  ],
+  "block": [
+    {
+      "domain_suffix": [
+        "ads.example"
+      ],
+      "domain_keyword": [
+        "tracking"
+      ]
+    }
+  ]
+}
