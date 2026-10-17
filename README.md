@@ -121,15 +121,25 @@ Sub-Store 只需四个远程文件：一个公共配置，三个模板生成最�
 
 迁移依据：[官方迁移指南](https://sing-box.sagernet.org/migration/)、[远程规则集](https://sing-box.sagernet.org/configuration/rule-set/)、[HTTP Client](https://sing-box.sagernet.org/configuration/shared/http-client/)、[路由默认 HTTP 客户端](https://sing-box.sagernet.org/configuration/route/#default_http_client)。核对日期：2026-10-17。刷新时同时更新 Sub-Store 中 sb-common、三种模板和远程合并脚本缓存，再重新生成配置并更新客户端；只在客户端重新加载旧文件不会修复源文件。
 
-## DNS 与微信
+## DNS 设计与验证
 
-三种模板的 dns-direct 使用阿里 DoH：server 为 223.5.5.5，path 为 /dns-query，TLS server_name 为 dns.alidns.com，detour 明确为 direct。使用固定 IP 建立连接，不需要先解析 DoH 服务器域名；通过 HTTPS 查询 A/AAAA，不关闭 IPv6。它替代了此前的 UDP 223.5.5.5，但不表示已证实此前故障由 UDP 导致，也不包含自动备用 DNS。
+采用两条 DNS 路径，区分三种用途：国内/直连目标通过直连阿里 DoH（dns-direct）解析；代理目标通过代理出口访问 Cloudflare DoH（dns-proxy）；机场节点服务器域名由节点的 domain_resolver 指向 dns-direct，避免节点连接依赖代理 DNS。节点域名解析和应用发出的 DNS 请求不是同一个入口。三个平台共用此逻辑，平台差异保留在 TUN、DNS 接管和监听部分。
 
-个人 direct 规则显式加入 weixin.qq.com、weixin.com、wechat.com、weixinbridge.com、servicewechat.com、qpic.cn、qlogo.cn 的后缀匹配，使微信相关 DNS 与连接优先直连。腾讯远程规则集仍保留，负责更广的腾讯服务；这里的域名例外不依赖腾讯规则集内容。dns-proxy 继续使用经 proxy 出口的 Cloudflare DoH，其他服务策略组和自定义拒绝/代理规则保持原有优先级。
+当前 dns-direct 的 server 为 223.5.5.5，path 为 /dns-query，TLS server_name 为 dns.alidns.com。使用固定 IP 建立 DoH 连接，无须再增加一个只用于解析 dns.alidns.com 的 bootstrap 服务器。国内外 DNS 使用原有共用规则集分类；dns.final 保留 dns-proxy，与漏网之鱼默认代理一致。服务组 dns_bindings 是静态映射，不会因客户端切换策略组出口而自动同步。
 
-2026-10-17 检查时，原运行环境已经能解析 channels.weixin.qq.com，未复现用户报告的瞬时 DNS 错误。修订后的配置通过 1.14.2 检查；另以独立回环 DNS/代理端口、无 TUN、无真实订阅节点测试，成功查询该域名的 A/AAAA，并经 direct 出口建立 HTTPS 连接（站点对 HEAD 返回 405，表明已连接而非 DNS 失败）。此测试验证新 DoH 与微信显式规则可用，不代表现有客户端已重新加载或所有微信页面均正常。
+DoH 是传输方式的选择，不能仅凭 UDP 改为 HTTPS 就认定速度或故障已改善。2026-10-17 通过独立 sing-box 1.14.2 回环 DNS 入口测试，同一上游 223.5.5.5、同一域名 channels.weixin.qq.com，关闭该测试实例的 DNS 缓存，各查询 A/AAAA/HTTPS 三轮（9 次）：UDP 全部 NOERROR，中位数 18ms，最大 25ms；DoH 全部 NOERROR，中位数 17ms，最大 75ms（首次连接）。这是当前网络下的少量样本，不能证明其他时段可靠性或所有 DNS 服务商的快慢。
 
-DNS 字段依据：[官方 DoH 服务器](https://sing-box.sagernet.org/configuration/dns/server/https/)、[拨号字段](https://sing-box.sagernet.org/configuration/shared/dial/)、[路由动作 resolve](https://sing-box.sagernet.org/configuration/route/rule_action/#resolve)。若更新后仍报 DNS 错误，记录客户端同一时刻的 DNS 日志；浏览器若单独指定安全 DNS，需另行核对，它可能不使用 sing-box 的 DNS 分流。7897 端口自身连接超时也应单独排查，不能用更换 DNS 解决。
+已撤回临时新增的微信个人后缀规则；custom 只保留原来的 starrylight.myds.me，微信继续由已有 geosite-tencent 负责。使用撤回后的产物及下载得到的实际腾讯规则内容做独立测试，A/AAAA 解析成功，日志确认经 dns-direct 和 direct 出口，HTTPS 连接约 0.38 秒完成（HEAD 返回 405）。这证明显式补域名不是当前测试成功的必要条件；用户报告的瞬时错误尚未复现。测试不启用 TUN、不加载真实机场节点、不接管当前客户端。
+
+IPv6 保留 prefer_ipv6，返回 A/AAAA，不过滤 AAAA、HTTPS 或 SVCB 查询；IPv6-only 群晖规则保持原样。直连 DNS 上游使用 IPv4 连接并不限制其查询 AAAA，独立测试已验证。仅在个人 IP 规则要求优先匹配时提前解析；通常先按域名分流，到 IP 规则阶段才 resolve，避免全部代理目标都提前依赖本地解析。
+
+保留正常 DNS 缓存与上游 TTL，不新增 rewrite_ttl、disable_expire 或 optimistic 长时间过期缓存。官方说明 optimistic 可以返回过期记录并后台刷新，默认窗口为 3d；当前存在动态群晖域名和动态 CDN，先保持现有正常缓存，以便诊断。reverse_mapping 保持现状用于辅助域名分流；官方提醒 macOS 系统缓存可能影响此映射，不能把它当作保证命中域名的机制，也不能据此断定它导致 DNS 查询失败。
+
+当前没有自动备用 DNS。只列出多个 servers 不会自动形成容错；若后续需要备用，应单独设计并测试 evaluate/响应匹配/超时的处理，而且需覆盖 domain_resolver 路径，而不只是应用 DNS 规则。暂不添加未经验证的回退或竞速配置。
+
+依据：[DNS 与缓存](https://sing-box.sagernet.org/configuration/dns/)、[DoH 服务器](https://sing-box.sagernet.org/configuration/dns/server/https/)、[拨号字段和 domain_resolver](https://sing-box.sagernet.org/configuration/shared/dial/)、[DNS 动作](https://sing-box.sagernet.org/configuration/dns/rule_action/)、[路由 resolve 动作](https://sing-box.sagernet.org/configuration/route/rule_action/#resolve)。当前网页文档与 v1.14.2 对应源代码均已核对。
+
+刷新 sb-common 并重新生成后，若微信仍失败，应读取故障发生时的日志，区分查询超时、SERVFAIL/NXDOMAIN、TLS 错误和代理端口连接超时。故障不复现时不能把配置检查或少量成功查询当作修复证明。浏览器单独指定的安全 DNS、macOS TUN 接管与局域网代理端口可达性仍需按实际运行环境定位。
 
 ## 共用策略与多节点
 

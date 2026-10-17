@@ -5,17 +5,6 @@
         "domain": [
           "starrylight.myds.me"
         ]
-      },
-      {
-        "domain_suffix": [
-          "weixin.qq.com",
-          "weixin.com",
-          "wechat.com",
-          "weixinbridge.com",
-          "servicewechat.com",
-          "qpic.cn",
-          "qlogo.cn"
-        ]
       }
     ],
     "proxy": [],

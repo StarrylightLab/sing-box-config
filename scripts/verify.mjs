@@ -42,12 +42,11 @@ for(const p of ['desktop','r5s-openwrt','iphone']) {
  assert.equal(directDNS.path,'/dns-query');
  assert.equal(directDNS.tls.server_name,'dns.alidns.com');
  assert.equal(directDNS.detour,'direct');
- const wechatRoute=c.route.rules.findIndex(rule=>rule.domain_suffix?.includes('weixin.qq.com'));
- assert(wechatRoute>=0);
- assert.equal(c.route.rules[wechatRoute].outbound,'direct');
- assert(wechatRoute<c.route.rules.findIndex(rule=>rule.action==='resolve'));
- assert(wechatRoute<c.route.rules.findIndex(rule=>rule.rule_set));
- assert.equal(c.dns.rules.find(rule=>rule.domain_suffix?.includes('weixin.qq.com')).server,'dns-direct');
+ const tencentRoute=c.route.rules.findIndex(rule=>rule.rule_set?.includes('geosite-tencent'));
+ assert(tencentRoute>=0);
+ assert.equal(c.route.rules[tencentRoute].outbound,'direct');
+ assert(tencentRoute<c.route.rules.findIndex(rule=>rule.action==='resolve'));
+ assert.equal(c.dns.rules.find(rule=>rule.rule_set?.includes('geosite-tencent')).server,'dns-direct');
  assert(c.route.rules.findIndex(rule=>rule.rule_set?.includes('geosite-google'))<c.route.rules.findIndex(rule=>rule.action==='resolve'));
  assert(c.route.rules.findIndex(rule=>rule.action==='resolve')<c.route.rules.findIndex(rule=>rule.rule_set?.includes('geoip-cn')));
  for(const set of c.route.rule_set) {
@@ -89,7 +88,7 @@ for(const kind of ['block','proxy','direct']) {
   if(key!=='ip_cidr') assert(c.dns.rules.some(x=>JSON.stringify(x[key])===JSON.stringify(match[key])&&(kind==='block'?x.action==='reject':x.server==='dns-'+kind)));
  }
 }
-assert.deepEqual((await json('shared/common.json')).custom.direct[0],{domain:['starrylight.myds.me']});
+assert.deepEqual((await json('shared/common.json')).custom,{direct:[{domain:['starrylight.myds.me']}],proxy:[],block:[]});
 await assert.rejects(()=>render('desktop',{}, {nodes:[]}),/没有可用节点/);
 await assert.rejects(()=>render('desktop',{}, {nodes:[{type:'socks',tag:'direct'}]}),/冲突/);
 await assert.rejects(()=>render('desktop',{}, {nodes:[node,node]}),/重复/);
