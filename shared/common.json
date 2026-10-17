@@ -46,6 +46,14 @@
         "update_interval": "1d"
       },
       {
+        "tag": "geosite-github",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/github.srs",
+        "http_client": "rules-direct",
+        "update_interval": "1d"
+      },
+      {
         "tag": "geosite-onedrive",
         "type": "remote",
         "format": "binary",
@@ -369,6 +377,22 @@
       },
       {
         "type": "selector",
+        "tag": "GitHub",
+        "outbounds": [
+          "proxy",
+          "香港优选",
+          "台湾优选",
+          "新加坡优选",
+          "日本优选",
+          "美国优选",
+          "其他地区优选",
+          "auto",
+          "手动选择",
+          "direct"
+        ]
+      },
+      {
+        "type": "selector",
         "tag": "漏网之鱼",
         "outbounds": [
           "proxy",
@@ -407,7 +431,8 @@
       "geosite-telegram": "Telegram",
       "geoip-google": "Google",
       "geoip-apple": "Apple",
-      "geoip-telegram": "Telegram"
+      "geoip-telegram": "Telegram",
+      "geosite-github": "GitHub"
     },
     "dns_bindings": {
       "Apple": "dns-direct"
