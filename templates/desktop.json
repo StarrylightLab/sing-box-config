@@ -6,6 +6,11 @@
   "dns": {
     "servers": [
       {
+        "type": "local",
+        "tag": "dns-local",
+        "prefer_go": true
+      },
+      {
         "type": "https",
         "tag": "dns-direct",
         "server": "223.5.5.5",
@@ -24,12 +29,31 @@
           "server_name": "cloudflare-dns.com"
         },
         "detour": "proxy"
+      },
+      {
+        "type": "fakeip",
+        "tag": "dns-fakeip",
+        "inet4_range": "198.19.0.0/16"
+      },
+      {
+        "type": "hosts",
+        "tag": "dns-hosts",
+        "predefined": {
+          "doh.pub": [
+            "1.12.12.21",
+            "120.53.53.53"
+          ]
+        }
       }
     ],
     "rules": [],
-    "final": "dns-proxy",
+    "final": "dns-direct",
     "strategy": "prefer_ipv6",
-    "reverse_mapping": true
+    "reverse_mapping": true,
+    "cache_capacity": 8192,
+    "optimistic": {
+      "enabled": true
+    }
   },
   "route": {
     "default_http_client": "rules-direct",

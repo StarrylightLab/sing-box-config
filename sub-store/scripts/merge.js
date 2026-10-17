@@ -84,6 +84,7 @@ for (const out of config.outbounds) for (const tag of out.outbounds || []) if (!
 for (const [set, tag] of Object.entries(policies.rule_bindings)) if (!setTags.has(set) || !tags.has(tag)) throw new Error('policies: 无效的规则集绑定 ' + set + ' -> ' + tag);
 for (const client of httpClients) if (client.detour && !tags.has(client.detour)) throw new Error('模板 HTTP 下载客户端引用不存在的出口');
 const dnsTags = new Set(config.dns.servers.map(x => x.tag));
+for (const required of ['dns-direct', 'dns-proxy', 'dns-fakeip', 'dns-local', 'dns-hosts']) if (!dnsTags.has(required)) throw new Error('模板缺少 DNS 服务器 ' + required);
 for (const [group, server] of Object.entries(policies.dns_bindings || {})) if (!tags.has(group) || !dnsTags.has(server)) throw new Error('policies: 无效的 DNS 绑定 ' + group + ' -> ' + server);
 const action = (kind, set) => kind === 'block' ? {action: 'reject'} : {action: 'route', outbound: kind === 'proxy' && set ? (policies.rule_bindings[set.tag] || 'proxy') : kind};
 const routeRules = [...config.route.rules];
@@ -92,7 +93,7 @@ const dnsRules = [...config.dns.rules];
 const customRules = [];
 for (const kind of kinds) for (const match of custom[kind]) {
   customRules.push({...match, ...action(kind)});
-  if (!('ip_cidr' in match)) dnsRules.push({...match, ...(kind === 'block' ? {action: 'reject'} : {action: 'route', server: 'dns-' + kind})});
+  if (!('ip_cidr' in match)) dnsRules.push({...match, ...(kind === 'block' ? {action: 'reject'} : {action: 'route', server: kind === 'proxy' ? 'dns-fakeip' : 'dns-direct'})});
 }
 // 仅在个人 IP 规则需要时提前解析；普通域名先分流，避免代理目标也依赖本地 DNS。
 const hasCustomIPRules = customRules.some(rule => 'ip_cidr' in rule);
@@ -109,7 +110,8 @@ for (const [kind, set] of orderedSets) if (set.tag.startsWith('geosite-')) {
   // 代理域名在路由阶段重新解析为 IPv4，避免 Cloudflare 等站点选中不稳定的 IPv6 路径。
   if (kind === 'proxy') routeRules.push({rule_set: [set.tag], action: 'resolve', strategy: 'ipv4_only'});
   routeRules.push({rule_set: [set.tag], ...action(kind, set)});
-  dnsRules.push({rule_set: [set.tag], ...(kind === 'block' ? {action: 'reject'} : {action: 'route', server: policies.dns_bindings?.[policies.rule_bindings[set.tag]] || 'dns-' + kind})});
+  const dnsServer = kind === 'block' ? undefined : (kind === 'proxy' ? 'dns-fakeip' : (policies.dns_bindings?.[policies.rule_bindings[set.tag]] || 'dns-direct'));
+  dnsRules.push({rule_set: [set.tag], ...(kind === 'block' ? {action: 'reject'} : {action: 'route', server: dnsServer})});
 }
 // 未被域名规则匹配的目标，到 IP 规则阶段才解析；解析后再次保护私网地址。
 if (!hasCustomIPRules) routeRules.push({action: 'resolve', strategy: 'prefer_ipv6'}, {ip_is_private: true, ...action('direct')});

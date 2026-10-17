@@ -109,7 +109,7 @@ Sub-Store 只需四个远程文件：一个公共配置，三个模板生成最�
 
 ## 参考与检查
 
-参考 [qichiyuhub 1.12.x 模板](https://github.com/qichiyuhub/rule/tree/main/config/singbox/1.12.x) 的规则链接、嗅探和 DNS 劫持方式，提取共用服务策略组和地区筛选；香港、台湾、新加坡、日本、美国和其他地区均使用原生 urltest 测速优选，不使用不受支持的负载均衡字段。
+参考 [qichiyuhub 1.14X 模板](https://github.com/qichiyuhub/rule/tree/main/config/singbox/1.14X) 的规则链接、嗅探和 DNS 劫持方式，提取共用服务策略组和地区筛选；香港、台湾、新加坡、日本、美国和其他地区均使用原生 urltest 测速优选，不使用不受支持的负载均衡字段。
 
 脚本接口依据 [Sub-Store 文件脚本文档](https://sub-store-org.github.io/doc/file/scripts) 和 [脚本参数文档](https://sub-store-org.github.io/doc/script/usage)，使用 $content、$arguments、produceArtifact。
 
@@ -123,15 +123,15 @@ Sub-Store 只需四个远程文件：一个公共配置，三个模板生成最�
 
 ## DNS 设计与验证
 
-采用两条 DNS 路径，区分三种用途：国内/直连目标通过直连阿里 DoH（dns-direct）解析；代理目标通过代理出口访问 Cloudflare DoH（dns-proxy）；机场节点服务器域名由节点的 domain_resolver 指向 dns-direct，并强制 IPv4 建连，避免节点自身 IPv6 路径影响 QUIC/UDP。目标网站仍保留 IPv6 优先，节点域名解析和应用发出的 DNS 请求不是同一个入口。三个平台共用此逻辑，平台差异保留在 TUN、DNS 接管和监听部分。
+采用混合 DNS 路径，区分三种用途：国内、直连目标和群晖域名通过 dns-direct 解析并保留 IPv6 优先；代理规则集通过 dns-fakeip 返回 198.19.0.0/16 的虚拟 IPv4 地址，由 sing-box 根据反向映射继续按域名走代理；dns-proxy 保留为代理 DoH 服务器，供后续需要真实海外 DNS 查询时使用。机场节点服务器域名由节点的 domain_resolver 指向 dns-direct，并强制 IPv4 建连，避免节点自身 IPv6 路径影响 QUIC/UDP。三个平台共用此逻辑，平台差异保留在 TUN、DNS 接管和监听部分。
 
-当前 dns-direct 的 server 为 223.5.5.5，path 为 /dns-query，TLS server_name 为 dns.alidns.com。使用固定 IP 建立 DoH 连接，无须再增加一个只用于解析 dns.alidns.com 的 bootstrap 服务器。国内外 DNS 使用原有共用规则集分类；dns.final 保留 dns-proxy，与漏网之鱼默认代理一致。服务组 dns_bindings 是静态映射，不会因客户端切换策略组出口而自动同步。
+当前 dns-direct 的 server 为 223.5.5.5，path 为 /dns-query，TLS server_name 为 dns.alidns.com。使用固定 IP 建立 DoH 连接，无须再增加一个只用于解析 dns.alidns.com 的 bootstrap 服务器。模板同时定义 dns-local、dns-proxy、dns-fakeip 和 dns-hosts；dns.final 使用 dns-direct，避免未命中规则的直连和 IPv6-only 域名被全局改成 IPv4。代理规则集在 DNS 阶段使用 dns-fakeip，直连规则集使用 dns-direct。服务组 dns_bindings 是静态映射，不会因客户端切换策略组出口而自动同步。
 
 DoH 是传输方式的选择，不能仅凭 UDP 改为 HTTPS 就认定速度或故障已改善。2026-10-17 通过独立 sing-box 1.14.2 回环 DNS 入口测试，同一上游 223.5.5.5、同一域名 channels.weixin.qq.com，关闭该测试实例的 DNS 缓存，各查询 A/AAAA/HTTPS 三轮（9 次）：UDP 全部 NOERROR，中位数 18ms，最大 25ms；DoH 全部 NOERROR，中位数 17ms，最大 75ms（首次连接）。这是当前网络下的少量样本，不能证明其他时段可靠性或所有 DNS 服务商的快慢。
 
 已撤回临时新增的微信个人后缀规则；custom 只保留原来的 starrylight.myds.me，微信继续由已有 geosite-tencent 负责。使用撤回后的产物及下载得到的实际腾讯规则内容做独立测试，A/AAAA 解析成功，日志确认经 dns-direct 和 direct 出口，HTTPS 连接约 0.38 秒完成（HEAD 返回 405）。这证明显式补域名不是当前测试成功的必要条件；用户报告的瞬时错误尚未复现。测试不启用 TUN、不加载真实机场节点、不接管当前客户端。
 
-IPv6 保留 prefer_ipv6，返回 A/AAAA，不过滤 AAAA、HTTPS 或 SVCB 查询；IPv6-only 群晖规则保持原样。直连 DNS 上游使用 IPv4 连接并不限制其查询 AAAA，独立测试已验证。仅在个人 IP 规则要求优先匹配时提前解析；通常先按域名分流，到 IP 规则阶段才 resolve，避免全部代理目标都提前依赖本地解析。
+IPv6 保留 prefer_ipv6。直连规则和群晖域名返回真实 A/AAAA；代理规则集使用 FakeIP，避免应用拿到 Cloudflare 等不稳定 IPv6 地址后直接连接。没有全局过滤 AAAA、HTTPS 或 SVCB，也没有默认拒绝 QUIC。仅在个人 IP 规则要求优先匹配时提前解析；通常先按域名分流，到 IP 规则阶段才 resolve。
 
 保留正常 DNS 缓存与上游 TTL，不新增 rewrite_ttl、disable_expire 或 optimistic 长时间过期缓存。官方说明 optimistic 可以返回过期记录并后台刷新，默认窗口为 3d；当前存在动态群晖域名和动态 CDN，先保持现有正常缓存，以便诊断。reverse_mapping 保持现状用于辅助域名分流；官方提醒 macOS 系统缓存可能影响此映射，不能把它当作保证命中域名的机制，也不能据此断定它导致 DNS 查询失败。
 
@@ -147,13 +147,13 @@ IPv6 保留 prefer_ipv6，返回 A/AAAA，不过滤 AAAA、HTTPS 或 SVCB 查询
 
 - 香港、台湾、新加坡、日本、美国、其他地区：每 10 分钟测速，容差 50ms。一个地区可加入多个节点，测速选一个出口；不是按连接轮询或等量分配。
 - 不同服务可同时使用不同地区：默认 ChatGPT/AI 选美国、YouTube/Microsoft 选香港、OneDrive 选台湾、Google 选日本、Telegram 选新加坡；Apple 默认直连。可在客户端修改服务策略组选择。缺少某地区节点时自动回退到全节点测速，避免空组。
-- 保留 GitHub、TikTok、Netflix、PayPal、Steam 和漏网之鱼。ChatGPT 规则排在通用 AI 之前；OneDrive 排在 Microsoft 之前；AI 排在 Google 之前。AI 规则集覆盖 Gemini、Grok 等，具体范围由上游维护。
+- 保留 GitHub 默认代理和漏网之鱼；TikTok、Netflix、PayPal、Steam 已从公共策略组中移除。ChatGPT 规则排在通用 AI 之前；OneDrive 排在 Microsoft 之前；AI 排在 Google 之前。AI 规则集覆盖 Gemini、Grok 等，具体范围由上游维护。
 - node_filters 是本脚本自己的节点名称筛选格式，不是 sing-box API。地区识别依赖节点名，特殊命名可在共用文件调整正则。
 - 修改 Apple 等服务为代理时，也可将 dns_bindings 中对应项改成 dns-proxy，保持 DNS 选择一致。
 
 ## IPv6 和群晖
 
-三个模板 DNS、域名解析和直连出口均优先 IPv6，兼容 IPv4；代理节点域名也允许 IPv6。DNS 服务器本身使用 IPv4 地址不妨碍查询 AAAA 记录。未使用 FakeIP。
+三个模板的直连 DNS、域名解析和直连出口均优先 IPv6，兼容 IPv4；代理节点服务器域名强制 IPv4 建连。代理规则集使用 FakeIP，直连规则不使用 FakeIP，因此群晖和 IPv6-only 直连服务仍保留真实 IPv6。
 
 shared/common.json 的 custom.direct 已加入精确域名 starrylight.myds.me 的直连规则，DNS 走 dns-direct，优先于第三方规则和服务策略。域名仍需发布有效 AAAA，设备网络、防火墙和群晖服务也必须具备 IPv6 可达性；配置检查不能证明公网访问成功。
 

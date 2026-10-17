@@ -87,7 +87,7 @@ for(const kind of ['block','proxy','direct']) {
   const key=Object.keys(match)[0];
   const i=c.route.rules.findIndex(x=>JSON.stringify(x[key])===JSON.stringify(match[key])&&(kind==='block'?x.action==='reject':x.outbound===kind));
   assert(i>resolve&&i<remote);
-  if(key!=='ip_cidr') assert(c.dns.rules.some(x=>JSON.stringify(x[key])===JSON.stringify(match[key])&&(kind==='block'?x.action==='reject':x.server==='dns-'+kind)));
+  if(key!=='ip_cidr') assert(c.dns.rules.some(x=>JSON.stringify(x[key])===JSON.stringify(match[key])&&(kind==='block'?x.action==='reject':x.server===(kind==='proxy'?'dns-fakeip':'dns-direct'))));
  }
 }
 assert.deepEqual((await json('shared/common.json')).custom,{direct:[{domain:['starrylight.myds.me']}],proxy:[],block:[]});
