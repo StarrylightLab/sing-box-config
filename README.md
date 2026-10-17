@@ -78,7 +78,7 @@ Sub-Store 只需四个远程文件：一个公共配置，三个模板生成最�
 
 这是本脚本支持的五种字段，并非 sing-box 所有字段。建议每个对象只放一种匹配字段，多个对象表示任选其一；组合字段遵循 sing-box 匹配逻辑。
 
-个人规则优先于第三方规则。同一目标在个人分类中冲突时，按 block → proxy → direct 处理。先嗅探、劫持 DNS、解析域名，再匹配个人路由规则，确保个人 IP 规则也优先。DNS 路由只采用不含 ip_cidr 的个人域名规则。
+个人规则优先于第三方规则。同一目标在个人分类中冲突时，按 block → proxy → direct 处理。有个人 ip_cidr 规则时，先解析再匹配，确保个人 IP 规则优先；只有域名规则时，先按域名分流，仅在进入 IP 规则阶段才解析，避免所有代理目标都提前依赖本地 DNS。DNS 路由只采用不含 ip_cidr 的个人域名规则。
 
 ## 规则集链接
 
@@ -120,6 +120,16 @@ Sub-Store 只需四个远程文件：一个公共配置，三个模板生成最�
 本次使用 sing-box 1.14.2 的 macOS 内核检查了桌面与 iPhone 合并产物，配置检查通过且没有弃用提示（不代表 iPhone 实机验证）。OpenWrt 的 auto_redirect 是 Linux 功能，在 macOS 上无法初始化，需在 R5S 本机检查。规则路径此前已通过 GitHub 仓库目录核对；尚未证明全部设备均能成功下载。
 
 迁移依据：[官方迁移指南](https://sing-box.sagernet.org/migration/)、[远程规则集](https://sing-box.sagernet.org/configuration/rule-set/)、[HTTP Client](https://sing-box.sagernet.org/configuration/shared/http-client/)、[路由默认 HTTP 客户端](https://sing-box.sagernet.org/configuration/route/#default_http_client)。核对日期：2026-10-17。刷新时同时更新 Sub-Store 中 sb-common、三种模板和远程合并脚本缓存，再重新生成配置并更新客户端；只在客户端重新加载旧文件不会修复源文件。
+
+## DNS 与微信
+
+三种模板的 dns-direct 使用阿里 DoH：server 为 223.5.5.5，path 为 /dns-query，TLS server_name 为 dns.alidns.com，detour 明确为 direct。使用固定 IP 建立连接，不需要先解析 DoH 服务器域名；通过 HTTPS 查询 A/AAAA，不关闭 IPv6。它替代了此前的 UDP 223.5.5.5，但不表示已证实此前故障由 UDP 导致，也不包含自动备用 DNS。
+
+个人 direct 规则显式加入 weixin.qq.com、weixin.com、wechat.com、weixinbridge.com、servicewechat.com、qpic.cn、qlogo.cn 的后缀匹配，使微信相关 DNS 与连接优先直连。腾讯远程规则集仍保留，负责更广的腾讯服务；这里的域名例外不依赖腾讯规则集内容。dns-proxy 继续使用经 proxy 出口的 Cloudflare DoH，其他服务策略组和自定义拒绝/代理规则保持原有优先级。
+
+2026-10-17 检查时，原运行环境已经能解析 channels.weixin.qq.com，未复现用户报告的瞬时 DNS 错误。修订后的配置通过 1.14.2 检查；另以独立回环 DNS/代理端口、无 TUN、无真实订阅节点测试，成功查询该域名的 A/AAAA，并经 direct 出口建立 HTTPS 连接（站点对 HEAD 返回 405，表明已连接而非 DNS 失败）。此测试验证新 DoH 与微信显式规则可用，不代表现有客户端已重新加载或所有微信页面均正常。
+
+DNS 字段依据：[官方 DoH 服务器](https://sing-box.sagernet.org/configuration/dns/server/https/)、[拨号字段](https://sing-box.sagernet.org/configuration/shared/dial/)、[路由动作 resolve](https://sing-box.sagernet.org/configuration/route/rule_action/#resolve)。若更新后仍报 DNS 错误，记录客户端同一时刻的 DNS 日志；浏览器若单独指定安全 DNS，需另行核对，它可能不使用 sing-box 的 DNS 分流。7897 端口自身连接超时也应单独排查，不能用更换 DNS 解决。
 
 ## 共用策略与多节点
 

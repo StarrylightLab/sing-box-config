@@ -92,8 +92,10 @@ for (const kind of kinds) for (const match of custom[kind]) {
   customRules.push({...match, ...action(kind)});
   if (!('ip_cidr' in match)) dnsRules.push({...match, ...(kind === 'block' ? {action: 'reject'} : {action: 'route', server: 'dns-' + kind})});
 }
-// 先解析再匹配个人规则，使个人 IP 规则也优先于第三方规则集。
-routeRules.push({action: 'resolve', strategy: 'prefer_ipv6'}, ...customRules);
+// 仅在个人 IP 规则需要时提前解析；普通域名先分流，避免代理目标也依赖本地 DNS。
+const hasCustomIPRules = customRules.some(rule => 'ip_cidr' in rule);
+if (hasCustomIPRules) routeRules.push({action: 'resolve', strategy: 'prefer_ipv6'});
+routeRules.push(...customRules);
 routeRules.push({ip_is_private: true, ...action('direct')});
 const orderedSets = [
   ...sets.block.map(set => ['block', set]),
@@ -105,6 +107,8 @@ for (const [kind, set] of orderedSets) if (set.tag.startsWith('geosite-')) {
   routeRules.push({rule_set: [set.tag], ...action(kind, set)});
   dnsRules.push({rule_set: [set.tag], ...(kind === 'block' ? {action: 'reject'} : {action: 'route', server: policies.dns_bindings?.[policies.rule_bindings[set.tag]] || 'dns-' + kind})});
 }
+// 未被域名规则匹配的目标，到 IP 规则阶段才解析；解析后再次保护私网地址。
+if (!hasCustomIPRules) routeRules.push({action: 'resolve', strategy: 'prefer_ipv6'}, {ip_is_private: true, ...action('direct')});
 for (const [kind, set] of orderedSets) if (set.tag.startsWith('geoip-')) routeRules.push({rule_set: [set.tag], ...action(kind, set)});
 config.route.rules = routeRules;
 config.route.rule_set = kinds.flatMap(kind => sets[kind]);

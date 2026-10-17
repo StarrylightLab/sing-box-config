@@ -6,9 +6,14 @@
   "dns": {
     "servers": [
       {
-        "type": "udp",
+        "type": "https",
         "tag": "dns-direct",
-        "server": "223.5.5.5"
+        "server": "223.5.5.5",
+        "path": "/dns-query",
+        "tls": {
+          "server_name": "dns.alidns.com"
+        },
+        "detour": "direct"
       },
       {
         "type": "https",
