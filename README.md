@@ -30,7 +30,8 @@ name=singbox 对应自己的组合名称；中文、空格、& 等需要 URL 编
 
 桌面默认开启 HTTP/SOCKS 混合代理。需要 TUN 时在链接末尾添加：
 
-- macOS / Windows：&tun=true
+- macOS：&tun=true
+- Windows：&tun=true&os=windows（额外拒绝 UDP/443，让浏览器从 QUIC 回退到 TCP/TLS）
 - Ubuntu：&tun=true&os=linux
 
 R5S 和 iPhone 已开启 TUN，不需要额外参数。

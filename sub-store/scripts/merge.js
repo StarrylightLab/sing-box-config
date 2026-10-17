@@ -85,6 +85,9 @@ const dnsTags = new Set(config.dns.servers.map(x => x.tag));
 for (const [group, server] of Object.entries(policies.dns_bindings || {})) if (!tags.has(group) || !dnsTags.has(server)) throw new Error('policies: 无效的 DNS 绑定 ' + group + ' -> ' + server);
 const action = (kind, set) => kind === 'block' ? {action: 'reject'} : {action: 'route', outbound: kind === 'proxy' && set ? (policies.rule_bindings[set.tag] || 'proxy') : kind};
 const routeRules = [...config.route.rules];
+// Windows 浏览器常会优先尝试 QUIC（UDP/443）。部分节点或网络不支持时，
+// 拒绝该流量可让浏览器回退到 TCP/TLS；仅由 os=windows 的生成链接启用。
+if (args.os === 'windows') routeRules.unshift({network: 'udp', port: 443, action: 'reject'});
 if (config.inbounds.some(x => x.tag === 'dns-in')) routeRules.unshift({inbound: ['dns-in'], action: 'hijack-dns'});
 const dnsRules = [...config.dns.rules];
 const customRules = [];
