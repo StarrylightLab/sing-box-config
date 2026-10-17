@@ -8,6 +8,9 @@ const config = parse($content ?? $files[0]);
 const readFile = async name => parse(await produceArtifact({type: 'file', name}));
 const custom = await readFile(args.custom || 'sb-custom');
 const sets = await readFile(args.sets || 'sb-sets');
+const policies = await readFile(args.policies || 'sb-policies');
+if (!policies || !Array.isArray(policies.outbounds) || !policies.node_filters || !policies.rule_bindings) throw new Error('policies: 缺少策略组、节点筛选或规则绑定');
+config.outbounds = policies.outbounds;
 const kinds = ['block', 'proxy', 'direct'];
 const matchKeys = new Set(['domain', 'domain_suffix', 'domain_keyword', 'domain_regex', 'ip_cidr']);
 function checkCategories(obj, label) {
@@ -37,7 +40,29 @@ for (const node of nodes) {
   if (!node || !node.type || typeof node.tag !== 'string' || !node.tag.trim() || reserved.has(node.tag) || ['selector', 'urltest', 'direct', 'block', 'dns'].includes(node.type)) throw new Error('节点名称为空、重复或与模板冲突；请先在 Sub-Store 去重/重命名');
   reserved.add(node.tag);
 }
-for (const outbound of config.outbounds) if (outbound.outbounds?.includes('{all}')) outbound.outbounds = outbound.outbounds.flatMap(tag => tag === '{all}' ? nodes.map(x => x.tag) : [tag]);
+// node_filters 是本脚本的配置，不会传给 sing-box。空地区组会移除，引用回退到全节点测速。
+const usableNodes = nodes.filter(node => !/官网|到期|剩余|流量|套餐|订阅|Traffic|ExpireDate/i.test(node.tag));
+if (!usableNodes.length) throw new Error('订阅没有可用节点，停止生成');
+const emptyGroups = new Set();
+const regionPatterns = Object.entries(policies.node_filters);
+for (const [tag, filter] of regionPatterns) {
+  if (!config.outbounds.some(x => x.tag === tag)) throw new Error('policies: 筛选器引用不存在的组 ' + tag);
+  if (!filter || Object.keys(filter).some(k => !['include', 'exclude'].includes(k))) throw new Error('policies: 无效筛选器');
+}
+for (const outbound of config.outbounds) {
+  if (!['selector', 'urltest', 'direct'].includes(outbound.type)) throw new Error('policies: 不支持的组类型 ' + outbound.type);
+  const filter = policies.node_filters[outbound.tag];
+  let selected = usableNodes;
+  if (filter?.include) selected = selected.filter(node => new RegExp(filter.include, 'i').test(node.tag));
+  if (filter?.exclude) selected = selected.filter(node => !new RegExp(filter.exclude, 'i').test(node.tag));
+  if (outbound.outbounds?.includes('{all}')) {
+    outbound.outbounds = outbound.outbounds.flatMap(tag => tag === '{all}' ? selected.map(x => x.tag) : [tag]);
+    if (!outbound.outbounds.length) emptyGroups.add(outbound.tag);
+  }
+}
+config.outbounds = config.outbounds.filter(x => !emptyGroups.has(x.tag));
+for (const outbound of config.outbounds) if (outbound.outbounds) outbound.outbounds = [...new Set(outbound.outbounds.map(tag => emptyGroups.has(tag) ? 'auto' : tag))];
+for (const node of nodes) if (node.domain_resolver === undefined) node.domain_resolver = {server: 'dns-direct', strategy: 'prefer_ipv6'};
 config.outbounds.push(...nodes);
 if (args.tun !== undefined && !['true', 'false', true, false].includes(args.tun)) throw new Error('tun 只能是 true/false');
 if (args.tun === true || args.tun === 'true') {
@@ -47,17 +72,23 @@ if (args.tun === true || args.tun === 'true') {
 }
 delete config.optional_tun;
 delete config.remote_rule_links;
-const action = kind => kind === 'block' ? {action: 'reject'} : {action: 'route', outbound: kind};
+const tags = new Set(config.outbounds.map(x => x.tag));
+if (!['direct','proxy','auto'].every(tag => tags.has(tag)) || tags.size !== config.outbounds.length) throw new Error('policies: 缺少基础出口或 tag 重复');
+for (const out of config.outbounds) for (const tag of out.outbounds || []) if (!tags.has(tag)) throw new Error('policies: 不存在的出口 ' + tag);
+for (const [set, tag] of Object.entries(policies.rule_bindings)) if (!setTags.has(set) || !tags.has(tag)) throw new Error('policies: 无效的规则集绑定 ' + set + ' -> ' + tag);
+const dnsTags = new Set(config.dns.servers.map(x => x.tag));
+for (const [group, server] of Object.entries(policies.dns_bindings || {})) if (!tags.has(group) || !dnsTags.has(server)) throw new Error('policies: 无效的 DNS 绑定 ' + group + ' -> ' + server);
+const action = (kind, set) => kind === 'block' ? {action: 'reject'} : {action: 'route', outbound: kind === 'proxy' && set ? (policies.rule_bindings[set.tag] || 'proxy') : kind};
 const routeRules = [...config.route.rules];
 if (config.inbounds.some(x => x.tag === 'dns-in')) routeRules.unshift({inbound: ['dns-in'], action: 'hijack-dns'});
-const dnsRules = [];
+const dnsRules = [...config.dns.rules];
 const customRules = [];
 for (const kind of kinds) for (const match of custom[kind]) {
   customRules.push({...match, ...action(kind)});
   if (!('ip_cidr' in match)) dnsRules.push({...match, ...(kind === 'block' ? {action: 'reject'} : {action: 'route', server: 'dns-' + kind})});
 }
 // 先解析再匹配个人规则，使个人 IP 规则也优先于第三方规则集。
-routeRules.push({action: 'resolve'}, ...customRules);
+routeRules.push({action: 'resolve', strategy: 'prefer_ipv6'}, ...customRules);
 routeRules.push({ip_is_private: true, ...action('direct')});
 const orderedSets = [
   ...sets.block.map(set => ['block', set]),
@@ -66,10 +97,10 @@ const orderedSets = [
   ...sets.direct.filter(set => set.tag === 'geosite-cn' || set.tag === 'geoip-cn').map(set => ['direct', set])
 ];
 for (const [kind, set] of orderedSets) if (set.tag.startsWith('geosite-')) {
-  routeRules.push({rule_set: [set.tag], ...action(kind)});
-  dnsRules.push({rule_set: [set.tag], ...(kind === 'block' ? {action: 'reject'} : {action: 'route', server: 'dns-' + kind})});
+  routeRules.push({rule_set: [set.tag], ...action(kind, set)});
+  dnsRules.push({rule_set: [set.tag], ...(kind === 'block' ? {action: 'reject'} : {action: 'route', server: policies.dns_bindings?.[policies.rule_bindings[set.tag]] || 'dns-' + kind})});
 }
-for (const [kind, set] of orderedSets) if (set.tag.startsWith('geoip-')) routeRules.push({rule_set: [set.tag], ...action(kind)});
+for (const [kind, set] of orderedSets) if (set.tag.startsWith('geoip-')) routeRules.push({rule_set: [set.tag], ...action(kind, set)});
 config.route.rules = routeRules;
 config.route.rule_set = kinds.flatMap(kind => sets[kind]);
 config.dns.rules = dnsRules;

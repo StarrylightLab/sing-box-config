@@ -23,37 +23,15 @@
     ],
     "rules": [],
     "final": "dns-proxy",
-    "strategy": "prefer_ipv4",
-    "independent_cache": true
+    "strategy": "prefer_ipv6",
+    "independent_cache": true,
+    "reverse_mapping": true
   },
-  "outbounds": [
-    {
-      "type": "direct",
-      "tag": "direct"
-    },
-    {
-      "type": "selector",
-      "tag": "proxy",
-      "outbounds": [
-        "auto",
-        "{all}"
-      ]
-    },
-    {
-      "type": "urltest",
-      "tag": "auto",
-      "outbounds": [
-        "{all}"
-      ],
-      "interval": "10m",
-      "tolerance": 100
-    }
-  ],
   "route": {
     "auto_detect_interface": true,
     "default_domain_resolver": {
       "server": "dns-direct",
-      "strategy": "ipv4_only"
+      "strategy": "prefer_ipv6"
     },
     "rules": [
       {
@@ -80,7 +58,7 @@
       }
     ],
     "rule_set": [],
-    "final": "proxy"
+    "final": "漏网之鱼"
   },
   "experimental": {
     "cache_file": {
@@ -91,7 +69,7 @@
     {
       "type": "mixed",
       "tag": "mixed-in",
-      "listen": "0.0.0.0",
+      "listen": "::",
       "listen_port": 7897
     }
   ],
@@ -104,9 +82,5 @@
     ],
     "auto_route": true,
     "strict_route": true
-  },
-  "remote_rule_links": {
-    "custom": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/custom.json",
-    "sets": "https://raw.githubusercontent.com/StarrylightLab/sing-box-config/main/rules/sets.json"
   }
 }

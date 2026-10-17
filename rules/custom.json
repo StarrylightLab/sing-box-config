@@ -1,5 +1,11 @@
 {
-  "direct": [],
+  "direct": [
+    {
+      "domain": [
+        "starrylight.myds.me"
+      ]
+    }
+  ],
   "proxy": [],
   "block": []
 }
