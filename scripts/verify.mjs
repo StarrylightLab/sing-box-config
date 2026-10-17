@@ -33,10 +33,15 @@ async function render(profile,args={},overrides={}) {
  return c;
 }
 for(const p of ['desktop','r5s-openwrt','iphone']) {
+ assert(!Object.hasOwn((await json('templates/'+p+'.json')).dns,'independent_cache'));
  const c=await render(p),mixed=c.inbounds.find(x=>x.type==='mixed');
+ assert(!Object.hasOwn(c.dns,'independent_cache'));
  for(const set of c.route.rule_set) {
   assert(set.url.startsWith('https://gh-proxy.com/https://raw.githubusercontent.com/'));
-  assert.equal(set.download_detour,'direct');
+  assert(!Object.hasOwn(set,'download_detour'));
+  assert.equal(set.http_client,'rules-direct');
+  assert(c.http_clients.some(client=>client.tag===set.http_client&&client.detour==='direct'));
+  assert.equal(c.route.default_http_client,'rules-direct');
  }
  assert.equal(mixed.listen,'0.0.0.0');assert.equal(mixed.listen_port,7897);
  if(p==='desktop') assert(!c.inbounds.some(x=>x.type==='tun'));
@@ -80,6 +85,10 @@ await assert.rejects(()=>render('desktop',{tun:'yes'}),/tun 只能/);
 await assert.rejects(()=>render('iphone',{tun:'true'}),/只用于桌面/);
 for(const invalid of [{direct:[],proxy:[]},{direct:[{}],proxy:[],block:[]},{direct:[{domain:['example.com'],outbound:'bad'}],proxy:[],block:[]},{direct:[{port:[80]}],proxy:[],block:[]}]) await assert.rejects(()=>render('desktop',{}, {'sb-custom':invalid}));
 for(const set of [{type:'remote',tag:'geosite-bad',format:'yaml',url:'https://example.com/a'},{type:'remote',tag:'bad',format:'source',url:'https://example.com/a'}]) await assert.rejects(()=>render('desktop',{}, {'sb-sets':{direct:[set],proxy:[],block:[]}}));
+for (const option of [{download_detour:'direct'}, {http_client:'missing-client'}, {http_client:{detour:'direct'}}]) {
+ const set={type:'remote',tag:'geosite-test',format:'source',url:'https://example.com/test.json',...option};
+ await assert.rejects(()=>render('desktop',{}, {'sb-sets':{direct:[set],proxy:[],block:[]}}));
+}
 const groupedNodes = ['香港 HK 01','香港 HK 02','台湾 TW 01','新加坡 SG 01','日本 JP 01','美国 US 01','德国 DE 01'].map(tag=>({...node,tag}));
 const grouped=await render('desktop',{}, {nodes:[node,...groupedNodes]});
 for(const tag of ['香港优选','台湾优选','新加坡优选','日本优选','美国优选','其他地区优选']) assert.equal(grouped.outbounds.find(x=>x.tag===tag).type,'urltest');

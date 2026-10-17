@@ -24,10 +24,10 @@
     "rules": [],
     "final": "dns-proxy",
     "strategy": "prefer_ipv6",
-    "independent_cache": true,
     "reverse_mapping": true
   },
   "route": {
+    "default_http_client": "rules-direct",
     "auto_detect_interface": true,
     "default_domain_resolver": {
       "server": "dns-direct",
@@ -82,5 +82,11 @@
     ],
     "auto_route": true,
     "strict_route": true
-  }
+  },
+  "http_clients": [
+    {
+      "tag": "rules-direct",
+      "detour": "direct"
+    }
+  ]
 }

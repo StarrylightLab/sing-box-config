@@ -26,11 +26,15 @@ for (const kind of kinds) for (const rule of custom[kind]) {
     if (key === 'domain_regex') for (const regex of value) new RegExp(regex);
   }
 }
+const httpClients = config.http_clients || [];
+const httpTags = new Set(httpClients.map(client => client.tag));
+if (!httpClients.length || httpTags.size !== httpClients.length || !httpTags.has(config.route.default_http_client)) throw new Error('模板缺少有效的 HTTP 下载客户端，请更新三种模板');
 const setTags = new Set();
 for (const kind of kinds) for (const set of sets[kind]) {
   if (!set || typeof set !== 'object' || Array.isArray(set)) throw new Error('sets: 规则集必须是对象');
-  const allowed = ['tag', 'type', 'format', 'url', 'download_detour', 'update_interval'];
+  const allowed = ['tag', 'type', 'format', 'url', 'http_client', 'update_interval'];
   if (Object.keys(set).some(k => !allowed.includes(k)) || set.type !== 'remote' || !['binary', 'source'].includes(set.format) || typeof set.url !== 'string' || !/^https:\/\//.test(set.url) || typeof set.tag !== 'string' || !/^(geosite|geoip)-.+/.test(set.tag) || setTags.has(set.tag)) throw new Error('sets: 无效链接、类型或重复 tag');
+  if (set.http_client !== undefined && (typeof set.http_client !== 'string' || !httpTags.has(set.http_client))) throw new Error('sets: 不存在的 HTTP 下载客户端');
   setTags.add(set.tag);
 }
 const nodes = await produceArtifact({type, name: args.name, platform: 'sing-box', produceType: 'internal'});
@@ -76,6 +80,7 @@ const tags = new Set(config.outbounds.map(x => x.tag));
 if (!['direct','proxy','auto'].every(tag => tags.has(tag)) || tags.size !== config.outbounds.length) throw new Error('policies: 缺少基础出口或 tag 重复');
 for (const out of config.outbounds) for (const tag of out.outbounds || []) if (!tags.has(tag)) throw new Error('policies: 不存在的出口 ' + tag);
 for (const [set, tag] of Object.entries(policies.rule_bindings)) if (!setTags.has(set) || !tags.has(tag)) throw new Error('policies: 无效的规则集绑定 ' + set + ' -> ' + tag);
+for (const client of httpClients) if (client.detour && !tags.has(client.detour)) throw new Error('模板 HTTP 下载客户端引用不存在的出口');
 const dnsTags = new Set(config.dns.servers.map(x => x.tag));
 for (const [group, server] of Object.entries(policies.dns_bindings || {})) if (!tags.has(group) || !dnsTags.has(server)) throw new Error('policies: 无效的 DNS 绑定 ' + group + ' -> ' + server);
 const action = (kind, set) => kind === 'block' ? {action: 'reject'} : {action: 'route', outbound: kind === 'proxy' && set ? (policies.rule_bindings[set.tag] || 'proxy') : kind};

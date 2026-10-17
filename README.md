@@ -89,7 +89,7 @@ Sub-Store 只需四个远程文件：一个公共配置，三个模板生成最�
       "tag": "geosite-example",
       "format": "binary",
       "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/google.srs",
-      "download_detour": "direct",
+      "http_client": "rules-direct",
       "update_interval": "1d"
     }
 
@@ -103,7 +103,8 @@ Sub-Store 只需四个远程文件：一个公共配置，三个模板生成最�
 - 桌面仅用混合端口时，在系统/应用设置代理；TUN 需要客户端支持和相应权限。
 - R5S 按 OpenWrt 设计，使用 auto_redirect，默认接口 br-lan；接口不同时修改模板。DNS 入口为 127.0.0.1:1053，需要按实际网络设置 dnsmasq 转发。防火墙、IPv6 和其他代理插件冲突仍需在设备上检查；导入模板不代表已经接管全网流量。
 - iPhone 的局域网访问还受系统权限和客户端运行状态影响。
-- 模板采用 sing-box 1.12 风格的 typed DNS、路由动作及 TUN 字段；按客户端内核版本检查兼容性。
+- 当前模板要求 sing-box 1.14.0 或更新内核，保留 typed DNS、路由动作及平台 TUN 差异。不要使用旧的 1.12 内核加载本次配置。
+- 已按官方当前文档删除 DNS independent_cache，并将远程规则集 download_detour 改为 http_client。三种模板均显式定义 http_clients 中的 rules-direct（detour: direct），route.default_http_client 也指向它，避免依赖已弃用的隐式下载客户端。这里只迁移规则集下载字段，DNS 服务器及 HTTP 客户端的 detour 仍是有效字段。
 - 远程规则集、Sub-Store 四个远程文件和合并脚本链接均使用与参考模板相同的 gh-proxy.com 前缀；规则集仍通过 direct 下载。加速仅用于公开 GitHub 文件，不要给机场订阅、令牌或 Sub-Store 最终分享链接添加此前缀。若加速服务不可用，可移除 https://gh-proxy.com/ 前缀恢复 GitHub 原始链接；不提供自动回退。修改规则或共用策略文件后，在 Sub-Store 刷新远程文件/缓存，重新生成三个文件并更新设备配置；远程 .srs 由 sing-box 按 update_interval 更新。
 
 ## 参考与检查
@@ -116,7 +117,9 @@ Sub-Store 只需四个远程文件：一个公共配置，三个模板生成最�
 
 离线合并检查通过不代表设备网络已经验证；导出后还应在目标内核执行 sing-box check -c 配置文件.json。本仓库检查不启动 TUN、不修改系统网络。
 
-本次额外使用 sing-box 1.12.0 的 macOS 内核检查了桌面与 iPhone 合并产物，配置检查通过（不代表 iPhone 实机验证）。OpenWrt 的 auto_redirect 是 Linux 功能，在 macOS 上无法初始化，需在 R5S 本机检查。规则路径已通过 GitHub 仓库目录核对；当前网络对部分 Raw 下载出现超时，尚未证明全部设备均能成功下载。
+本次使用 sing-box 1.14.2 的 macOS 内核检查了桌面与 iPhone 合并产物，配置检查通过且没有弃用提示（不代表 iPhone 实机验证）。OpenWrt 的 auto_redirect 是 Linux 功能，在 macOS 上无法初始化，需在 R5S 本机检查。规则路径此前已通过 GitHub 仓库目录核对；尚未证明全部设备均能成功下载。
+
+迁移依据：[官方迁移指南](https://sing-box.sagernet.org/migration/)、[远程规则集](https://sing-box.sagernet.org/configuration/rule-set/)、[HTTP Client](https://sing-box.sagernet.org/configuration/shared/http-client/)、[路由默认 HTTP 客户端](https://sing-box.sagernet.org/configuration/route/#default_http_client)。核对日期：2026-10-17。刷新时同时更新 Sub-Store 中 sb-common、三种模板和远程合并脚本缓存，再重新生成配置并更新客户端；只在客户端重新加载旧文件不会修复源文件。
 
 ## 共用策略与多节点
 

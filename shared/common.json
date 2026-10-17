@@ -18,7 +18,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/openai.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -26,7 +26,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/category-ai-!cn.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -34,7 +34,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/youtube.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -42,7 +42,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/google.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -50,7 +50,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/github.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -58,7 +58,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/onedrive.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -66,7 +66,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/microsoft.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -74,7 +74,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/apple.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -82,7 +82,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/telegram.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -90,7 +90,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/tiktok.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -98,7 +98,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/netflix.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -106,7 +106,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/paypal.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -114,7 +114,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/steam.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -122,7 +122,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/geolocation-!cn.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -130,7 +130,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/google.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -138,7 +138,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo-lite/geoip/apple.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -146,7 +146,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/telegram.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -154,7 +154,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/netflix.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       }
     ],
@@ -164,7 +164,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/tencent.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -172,7 +172,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/steam@cn.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -180,7 +180,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/cn.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       },
       {
@@ -188,7 +188,7 @@
         "type": "remote",
         "format": "binary",
         "url": "https://gh-proxy.com/https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/cn.srs",
-        "download_detour": "direct",
+        "http_client": "rules-direct",
         "update_interval": "1d"
       }
     ]
