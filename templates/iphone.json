@@ -49,7 +49,7 @@
     "rules": [
       {
         "domain": ["starrylight.myds.me"],
-        "query_type": ["A"],
+        "query_type": ["AAAA"],
         "action": "predefined",
         "rcode": "NOERROR"
       }
