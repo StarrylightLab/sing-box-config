@@ -75,7 +75,12 @@ for(const p of ['desktop','r5s-openwrt','iphone']) {
   assert.equal(c.inbounds.find(x=>x.tag==='dns-in').listen_port,1053);
   assert.equal(c.route.rules[0].action,'hijack-dns');
  }
- if(p==='iphone') assert(c.inbounds.some(x=>x.type==='tun'));
+ if(p==='iphone') {
+  assert(c.inbounds.some(x=>x.type==='tun'));
+  const nasDNS=c.dns.rules.filter(x=>x.domain?.includes('starrylight.myds.me'));
+  assert.deepEqual(nasDNS[0],{domain:['starrylight.myds.me'],query_type:['A'],action:'predefined',rcode:'NOERROR'});
+  assert.equal(nasDNS[1].server,'dns-direct');
+ } else assert(!c.dns.rules.some(x=>x.action==='predefined'));
  const t=c.route.rules.findIndex(x=>x.rule_set?.includes('geosite-tencent'));
  const overseas=c.route.rules.findIndex(x=>x.rule_set?.includes('geosite-!cn'));
  assert(t>=0&&t<overseas);

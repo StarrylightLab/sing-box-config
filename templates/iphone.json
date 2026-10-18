@@ -46,7 +46,14 @@
         }
       }
     ],
-    "rules": [],
+    "rules": [
+      {
+        "domain": ["starrylight.myds.me"],
+        "query_type": ["A"],
+        "action": "predefined",
+        "rcode": "NOERROR"
+      }
+    ],
     "final": "dns-proxy",
     "strategy": "prefer_ipv6",
     "reverse_mapping": true,
