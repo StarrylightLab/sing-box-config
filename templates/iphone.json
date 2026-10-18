@@ -88,6 +88,17 @@
           }
         ],
         "action": "hijack-dns"
+      },
+      {
+        "domain": ["starrylight.myds.me"],
+        "action": "route-options",
+        "override_address": "starrylight.myds.me"
+      },
+      {
+        "domain": ["starrylight.myds.me"],
+        "action": "resolve",
+        "server": "dns-direct",
+        "strategy": "ipv6_only"
       }
     ],
     "rule_set": [],

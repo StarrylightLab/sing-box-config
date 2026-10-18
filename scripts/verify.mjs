@@ -56,7 +56,7 @@ for(const p of ['desktop','r5s-openwrt','iphone']) {
  const tencentRoute=c.route.rules.findIndex(rule=>rule.rule_set?.includes('geosite-tencent'));
  assert(tencentRoute>=0);
  assert.equal(c.route.rules[tencentRoute].outbound,'direct');
- assert(tencentRoute<c.route.rules.findIndex(rule=>rule.action==='resolve'&&!rule.clash_mode));
+ assert(tencentRoute<c.route.rules.findIndex(rule=>rule.action==='resolve'&&!rule.clash_mode&&!rule.domain));
  assert.equal(c.dns.rules.find(rule=>rule.rule_set?.includes('geosite-tencent')).server,'dns-direct');
  assert(c.route.rules.some(rule=>rule.action==='resolve'&&rule.strategy==='prefer_ipv4'&&rule.server==='dns-proxy'&&rule.rule_set?.includes('geosite-google')));
  assert(c.route.rules.findIndex(rule=>rule.action==='resolve')<c.route.rules.findIndex(rule=>rule.rule_set?.includes('geoip-cn')));
@@ -80,6 +80,11 @@ for(const p of ['desktop','r5s-openwrt','iphone']) {
   const nasDNS=c.dns.rules.filter(x=>x.domain?.includes('starrylight.myds.me'));
   assert.deepEqual(nasDNS[0],{domain:['starrylight.myds.me'],query_type:['A'],action:'predefined',rcode:'NOERROR'});
   assert.equal(nasDNS[1].server,'dns-direct');
+  const nasRoutes=c.route.rules.filter(x=>x.domain?.includes('starrylight.myds.me'));
+  assert.equal(nasRoutes[0].override_address,'starrylight.myds.me');
+  assert.equal(nasRoutes[1].strategy,'ipv6_only');
+  assert.equal(nasRoutes[1].server,'dns-direct');
+  assert.equal(nasRoutes[2].outbound,'direct');
  } else assert(!c.dns.rules.some(x=>x.action==='predefined'));
  const t=c.route.rules.findIndex(x=>x.rule_set?.includes('geosite-tencent'));
  const overseas=c.route.rules.findIndex(x=>x.rule_set?.includes('geosite-!cn'));
